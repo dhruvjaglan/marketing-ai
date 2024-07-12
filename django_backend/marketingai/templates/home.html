@@ -1,0 +1,204 @@
+<!-- home.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Market Segments</title>
+        <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .top-bar {
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            text-align: left;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .sidebar {
+            width: 25%;
+            background-color: #f4f4f4;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            height: 100vh;
+            position: fixed;
+            top: 60px; /* Offset for the top bar */
+        }
+        .sidebar img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+        }
+        .main-content {
+            margin-left: 30%;
+            padding: 20px;
+            margin-top: 60px; /* Offset for the top bar */
+            box-sizing: border-box;
+        }
+        .market-segment-list {
+            list-style: none;
+            padding: 0;
+        }
+        .market-segment-list li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .create-new-segment {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #4CAF50;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+        }
+    </style>
+
+
+        </style>
+    </head>
+    <body>
+        <div class="top-bar" id="top-bar">
+            Greeting, User!
+        </div>
+        <div class="sidebar" id="sidebar">
+            <img src="profile.jpg" alt="Profile Image" id="profile-image">
+            <p id="name"> Full name...</p>
+            <p id="title"> title...</p>
+            <h2 id="company-name">Company Name</h2>
+            <p id="company-description">Company Description...</p>
+            <p id="company-industry">Industry: ABC</p>
+        </div>
+        {% csrf_token %}
+        <div class="main-content">
+            <h1>Tell me who do you want to reach out to?</h1>
+            <ul class="market-segment-list" id="market-segment-list">
+                <!-- Market segments will be loaded here -->
+            </ul>
+            <div class="create-new-segment" onclick="createNewSegment()">Create New Segment</div>
+        </div>
+    
+        <script>
+
+        function createNewSegment() {
+            var userData = localStorage.getItem('userData');
+            userData = JSON.parse(userData);
+            fetch(window.location.origin + '/target/new_segment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'  
+                },
+                body: JSON.stringify({company_id: userData.company.id}), // Include any necessary data here
+            })
+            .then(response => {
+            if (response.status === 200) {
+                return response.json();
+            } else {
+                throw new Error('Failed to create new segment');
+                }
+            })
+            .then(data => {
+                const newSegmentId = data.id;
+                window.location.href = `${window.location.origin}/target/segment/${newSegmentId}`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.message);
+            });
+        }
+
+
+            window.addEventListener('load', function() {
+                var userData = localStorage.getItem('userData');
+                if (userData) {
+                    userData = JSON.parse(userData);
+    
+                    // Update greeting
+                    var topBar = document.getElementById('top-bar');
+                    topBar.innerText = 'Greeting, ' + userData.first_name + '!';
+    
+                    // Update company information
+                    var profileImage = document.getElementById('profile-image');
+                    var name = document.getElementById('name');
+                    var title = document.getElementById('title');
+                    var companyName = document.getElementById('company-name');
+                    var companyDescription = document.getElementById('company-description');
+                    var companyIndustry = document.getElementById('company-industry');
+    
+                    profileImage.src = userData.avatar;
+                    name.innerText=userData.full_name;
+                    title.innerText=userData.title;
+                    companyName.innerText = userData.company.name;
+                    companyDescription.innerText = userData.company.description;
+                    companyIndustry.innerText = 'Industry: ' + userData.company.industry;
+
+                    if (!userData.company.detailed_descrption) {
+                        fetchCompanyDescription(userData.company.id);
+                    }
+
+    
+                    // Fetch market segments
+                    fetchMarketSegments(userData.company.id);
+    
+                } else {
+                    window.location.href = window.location.origin + "/get_started/";
+                }
+            });
+    
+            function fetchMarketSegments(companyId) {
+                fetch('/target/market_segment/' + companyId + '/')
+                    .then(response => response.json())
+                    .then(data => {
+                        var marketSegmentList = document.getElementById('market-segment-list');
+                        marketSegmentList.innerHTML = '';  // Clear existing list
+                        data.forEach(segment => {
+                            var listItem = document.createElement('li');
+                            listItem.innerText = segment.name + ': ' + segment.raw_industries;
+                            marketSegmentList.appendChild(listItem);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching market segments:', error));
+            }
+    
+        // Function to fetch company details
+        function fetchCompanyDescription(companyId) {
+            var url = '/target/company_detail/' + companyId + '/';  // Adjust the URL as needed
+
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw Error(response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    userData.company.detailed_descrption = data.description
+
+                    // Todo open popup to verfy/update detailed description
+                    // update local storage
+                })
+                .catch(function(error) {
+                    document.getElementById('error_message').textContent = "Failed to fetch company details. Please try again.";
+                    console.error('Error:', error);
+                });
+        }
+
+    </script>
+</body>
+</html>

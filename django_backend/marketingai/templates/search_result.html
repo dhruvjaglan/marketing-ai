@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profiles</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        .profiles {
+            flex: 1;
+            margin-right: 20px;
+        }
+        .profile-card {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+        .profile-photo {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin-right: 15px;
+        }
+        .profile-details {
+            flex: 1;
+        }
+        .profile-details h2 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .profile-details p {
+            margin: 5px 0;
+        }
+        .profile-links a {
+            display: inline-block;
+            margin-right: 10px;
+            text-decoration: none;
+            color: #0073b1; /* LinkedIn blue */
+        }
+        .email-button {
+            margin-top: 10px;
+        }
+        .email-content-container {
+            flex: 1;
+            max-width: 300px;
+        }
+        .email-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        .email-item {
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background: #f9f9f9;
+            margin-bottom: 10px;
+        }
+        .email-subject {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="profiles">
+        <h1>Profiles</h1>
+        {% for profile in profiles %}
+        <div class="profile-card">
+            <img src="{{ profile.profile_photo }}" alt="{{ profile.full_name }}'s photo" class="profile-photo">
+            <div class="profile-details">
+                <h2>{{ profile.full_name }}</h2>
+                <p><strong>Location:</strong> {{ profile.location_name }}</p>
+                <p><strong>Title:</strong> {{ profile.title }} at {{ profile.company }}</p>
+                <div class="profile-links">
+                    <a href="{{ profile.linkedin_url }}" target="_blank">LinkedIn</a>
+                    <a href="{{ profile.github_url }}" target="_blank">GitHub</a>
+                </div>
+                <p><strong>Emails:</strong>
+                    {% for email in profile.emails|slice:":3" %}
+                        <a href="mailto:{{ email }}">{{ email }}</a>{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Phone:</strong> {{ profile.phone_numbers|join:", " }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="email-content-container">
+        <button class="email-button" onclick="fetchGeneralEmailContent('{{ id }}')">Get Email Content</button>
+        <ul class="email-list" id="emailList">
+            <!-- Email items will be inserted here -->
+        </ul>
+    </div>
+
+    <script>
+        function fetchGeneralEmailContent(segmentId) {
+            const emailList = document.getElementById('emailList');
+
+            // Fetch email content from server using segmentId
+            fetch(`/target/get_mails/${segmentId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear previous email items
+                    emailList.innerHTML = '';
+
+                    // Add new email items
+                    data.forEach(email => {
+                        const emailItem = document.createElement('li');
+                        emailItem.className = 'email-item';
+                        emailItem.innerHTML = `
+                            <div class="email-subject">${email.subject}</div>
+                            <div class="email-body">${email.body.replace(/\n/g, '<br>')}</div>
+                        `;
+
+                        emailList.appendChild(emailItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching email content:', error);
+                });
+        }
+    </script>
+</body>
+</html>

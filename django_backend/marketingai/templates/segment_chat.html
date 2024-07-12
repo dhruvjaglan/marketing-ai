@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Segment Chats</title>
+    <style>
+        /* Add your CSS styles here */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 80%;
+            margin: auto;
+            margin-top: 20px;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            max-width: 70%;
+        }
+        .bot-message {
+            background-color: #f0f0f0;
+            align-self: flex-start;
+        }
+        .user-message {
+            background-color: #e0f7fa;
+            align-self: flex-end;
+        }
+        .ended {
+            color: gray;
+            margin-top: 10px;
+        }
+        .input-field {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .send-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Marget Segment: {{ name }}</h1>
+
+        {% if chats %}
+            {% for chat in chats %}
+                <div class="message {% if chat.type == 'user' %}user-message{% else %}bot-message{% endif %}">
+                    {{ chat.message }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No chats found for this segment.</p>
+        {% endif %}
+
+        {% if end %}
+            <p class="ended">This conversation has ended.</p>
+
+            {% if search_filters %}
+                <div class="search-filters">
+                    <ul>
+                        <li><strong>Industries:</strong> {{ search_filters.industries }}</li>
+                        <li><strong>Employee Count:</strong> {{ search_filters.employee_count }}</li>
+                        <li><strong>Country:</strong> {{ search_filters.country }}</li>
+                        <li><strong>Job Titles:</strong> {{ search_filters.job_title }}</li>
+                    </ul>
+                </div>
+                <button class="search-button" onclick="performSearch('{{ id }}')">Search</button>
+            {% endif %}
+
+        {% else %}
+            <!-- User message input field -->
+            <div class="input-field">
+                {% csrf_token %}
+                <input type="text" id="user-message" class="message-input" placeholder="Type your message...">
+                <button class="send-button" onclick="sendMessage('{{ id }}')">Send</button>
+
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function addBotMessage(message) {
+            var chatContainer = document.querySelector('.chat-container');
+            var botMessageElement = document.createElement('div');
+            botMessageElement.classList.add('message', 'bot-message');
+            botMessageElement.textContent = message;
+            chatContainer.insertBefore(botMessageElement, chatContainer.querySelector('.input-field'));
+        }
+
+        function addUserMessage(message) {
+            var chatContainer = document.querySelector('.chat-container');
+            var userMessageElement = document.createElement('div');
+            userMessageElement.classList.add('message', 'user-message');
+            userMessageElement.textContent = message;
+            chatContainer.insertBefore(userMessageElement, chatContainer.querySelector('.input-field'));
+        }
+        
+
+        function showSearchFilters(searchFilters, segment_id) {
+            var chatContainer = document.querySelector('.chat-container');
+            var searchFiltersElement = document.createElement('div');
+            searchFiltersElement.classList.add('search-filters');
+            var filtersHTML = `
+                <ul>
+                    <li><strong>Industries:</strong> ${searchFilters.industries}</li>
+                    <li><strong>Employee Count:</strong> ${searchFilters.employee_count}</li>
+                    <li><strong>Country:</strong> ${searchFilters.country}</li>
+                    <li><strong>Job Titles:</strong> ${searchFilters.job_title}</li>
+                </ul>
+            `;
+            searchFiltersElement.innerHTML = filtersHTML;
+            chatContainer.insertBefore(searchFiltersElement, chatContainer.querySelector('.input-field'));
+            // Enable search button
+            var searchButton = document.createElement('button');
+            searchButton.classList.add('search-button');
+            searchButton.textContent = 'Search';
+            searchButton.onclick = performSearch(segment_id);
+            chatContainer.insertBefore(searchButton, chatContainer.querySelector('.input-field'));
+        }
+
+        function performSearch(segment_id) {
+            // Implement your search functionality here
+            // Example: Redirect to search page or execute search API call
+            window.location.href = `${window.location.origin}/target/segment/result/${segment_id}/`;
+        }
+
+        function sendMessage(segmentId) {
+            var messageInput = document.getElementById('user-message');
+            var message = messageInput.value.trim();
+            addUserMessage(message);
+            if (message !== '') {
+                // Call your send_message function or API endpoint here
+                // Example: Fetch API call
+                fetch('/target/send_message/' + segmentId +'/' , {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ message: message }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Handle new bot message
+                    
+                    addBotMessage(data.message);
+                    if (data.end && data.search_filters) {
+                        showSearchFilters(data.search_filters, data.id);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                    // Handle error as needed
+                });
+            }
+            // Optionally, clear input field after sending
+            messageInput.value = '';
+        }
+    </script>
+</body>
+</html>
