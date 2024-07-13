@@ -243,7 +243,6 @@ def search_results_view(request, segment_id):
         "profiles": marget_segment.search_results,
         "count": marget_segment.raw_response.get('total')
     }
-    print(context)
 
     return render(request, 'search_result.html', context)
 

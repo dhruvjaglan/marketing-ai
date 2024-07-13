@@ -1,6 +1,6 @@
 import requests
 from django.conf import settings
-
+import json
 from marketingai.constants import EMAIL_TEMPLATE, INDUSTRIES_FIX_PROMPT, INDUSTRY_PROBLEMS
 from .models import Person, Company
 from openai import OpenAI
@@ -125,7 +125,7 @@ def get_people_search_results(search_fields):
         countries = ', '.join("'" + country.lower() + "'" for country in search_fields.get("country"))
         if count> 0:
             sql_query += " And"
-        sql_query+=" job_company_location_country IN ("+ countries + ")"
+        sql_query+=" job_company_location_country IN ("+ countries + ") AND location_country IN ("+ countries + ")"
     if search_fields.get("job_title", None):
         count+=1
         job_titles = ', '.join("'" + title.lower() + "'" for title in search_fields.get("job_title"))
