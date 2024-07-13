@@ -39,6 +39,18 @@ def get_detailed_description(request, pk):
 
 ## TODO add functionality to update details
 
+@api_view(['POST'])
+def update_description(request):
+    data= request.data
+    company_id = data.get("company_id")
+    description = data.get("description")
+    company = Company.objects.get(id=company_id)
+    company.detailed_descrption=description
+    company.save()
+    person = Person.objects.get(id=data.get("id"))
+    return Response(PersonSerializer(person).data)
+
+
 ### start a new margeting segment
 @api_view(['POST'])
 def create_new_marketing_segment(request):

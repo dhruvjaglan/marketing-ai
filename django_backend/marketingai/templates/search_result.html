@@ -82,14 +82,14 @@
             <div class="profile-details">
                 <h2>{{ profile.full_name }}</h2>
                 <p><strong>Location:</strong> {{ profile.location_name }}</p>
-                <p><strong>Title:</strong> {{ profile.title }} at {{ profile.company }}</p>
+                <p><strong>Title:</strong> {{ profile.job_title }} at {{ profile.job_company_name }}</p>
                 <div class="profile-links">
-                    <a href="{{ profile.linkedin_url }}" target="_blank">LinkedIn</a>
-                    <a href="{{ profile.github_url }}" target="_blank">GitHub</a>
+                    <a href= "https://www.{{ profile.linkedin_url }}" target="_blank">LinkedIn</a>
+                    <a href="https://www.{{ profile.github_url }}" target="_blank">GitHub</a>
                 </div>
                 <p><strong>Emails:</strong>
                     {% for email in profile.emails|slice:":3" %}
-                        <a href="mailto:{{ email }}">{{ email }}</a>{% if not forloop.last %}, {% endif %}
+                        <a href="mailto:{{ email.address }}">{{ email.address }}</a>{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </p>
                 <p><strong>Phone:</strong> {{ profile.phone_numbers|join:", " }}</p>
