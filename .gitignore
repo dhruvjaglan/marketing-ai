@@ -1,3 +1,10 @@
 .python-version
 .vscode/
 local.env
+# Ignore SQLite database file
+django_backend/db.sqlite3
+
+# Ignore Python compiled bytecode files
+django_backend/django_backend/__pycache__/settings.cpython-312.pyc
+django_backend/marketingai/__pycache__/urls.cpython-312.pyc
+django_backend/marketingai/__pycache__/views.cpython-312.pyc
