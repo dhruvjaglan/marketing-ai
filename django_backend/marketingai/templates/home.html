@@ -238,6 +238,7 @@
     
         // Function to fetch company details
         function fetchCompanyDescription(companyId, detailed_description) {
+            // var userData = localStorage.getItem('userData');
             if (detailed_description) {
                 openPopup(detailed_description, companyId);
             }else {
@@ -252,15 +253,13 @@
                 })
                 .then(function(data) {
                     // Assuming userData is globally accessible or defined elsewhere
-                    userData.company.detailed_description = data.description;
 
                     // Open a popup or modal to verify/update detailed description
-                    openPopup(userData.company.detailed_description, companyId);
+                    openPopup(data.description, companyId);
                     
                     // Update local storage if needed
                 })
                 .catch(function(error) {
-                    document.getElementById('error_message').textContent = "Failed to fetch company details. Please try again.";
                     console.error('Error:', error);
                 });
             }

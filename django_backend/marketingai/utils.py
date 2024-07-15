@@ -12,7 +12,8 @@ client = OpenAI(
 )
 
 def get_company_person_info(email):
-    url="https://person-stream.clearbit.com/v2/combined/find?email=dhruv@babblebots.ai"
+    url="https://person-stream.clearbit.com/v2/combined/find?email="+email
+    print(url)
 
     payload={}
     auth_token='Bearer ' + settings.CLEARBIT_API_KEY
@@ -21,6 +22,8 @@ def get_company_person_info(email):
     }
 
     response=requests.request("GET", url, headers=headers, data=payload)
+    print(response)
+    print(response.json())
 
     company=None
     person=None
@@ -67,6 +70,10 @@ def get_company_person_info(email):
         )
 
         person.save()
+    else:
+        person=Person(email=email,company=company,raw_data=response.json())
+        person.save()
+
 
     return person
     

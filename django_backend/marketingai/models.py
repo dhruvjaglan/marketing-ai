@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 
 class Company(models.Model):
     name = models.CharField(max_length=100)
-    legal_name = models.CharField(max_length=100)
+    legal_name = models.CharField(max_length=100, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     detailed_descrption = models.TextField(blank=True, null=True)
     sector = models.CharField(max_length=100)
@@ -14,10 +14,10 @@ class Company(models.Model):
     domain = models.CharField(max_length=100, unique=True)
     tags = models.JSONField(default=list, blank=True)
     founded_year = models.IntegerField(blank=True, null=True)
-    timezone = models.CharField(max_length=50)
+    timezone = models.CharField(max_length=50, blank=True, null=True)
     logo = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    raw_data = models.JSONField()
+    raw_data = models.JSONField(blank=True, null=True)
 
 
 class Person(models.Model):
@@ -30,7 +30,7 @@ class Person(models.Model):
     bio = models.TextField(blank=True, null=True)
     site = models.URLField(blank=True, null=True)
     avatar = models.URLField(blank=True, null=True)
-    linkedin_handle=models.CharField(max_length=100)
+    linkedin_handle=models.CharField(max_length=100, blank=True, null=True)
     raw_data = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
     company = models.ForeignKey(Company, on_delete=models.PROTECT, null=True, blank=True)
