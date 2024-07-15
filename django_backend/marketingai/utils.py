@@ -5,6 +5,10 @@ from marketingai.constants import EMAIL_TEMPLATE, INDUSTRIES_FIX_PROMPT, INDUSTR
 from .models import Person, Company
 from openai import OpenAI
 from peopledatalabs import PDLPY
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 client = OpenAI(
     # This is the default and can be omitted
@@ -13,7 +17,6 @@ client = OpenAI(
 
 def get_company_person_info(email):
     url="https://person-stream.clearbit.com/v2/combined/find?email="+email
-    print(url)
 
     payload={}
     auth_token='Bearer ' + settings.CLEARBIT_API_KEY
@@ -22,8 +25,6 @@ def get_company_person_info(email):
     }
 
     response=requests.request("GET", url, headers=headers, data=payload)
-    print(response)
-    print(response.json())
 
     company=None
     person=None
@@ -50,7 +51,8 @@ def get_company_person_info(email):
                     )
                 company.save()
         except Exception as e:
-            print(e)
+            logger.error(e)
+
 
     if response.json()['person']:
         data=response.json()['person']
