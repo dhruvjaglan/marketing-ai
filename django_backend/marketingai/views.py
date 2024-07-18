@@ -4,8 +4,9 @@ import json
 from rest_framework import generics
 from rest_framework.response import Response
 from marketingai.constants import MARGET_SEGMENT_CONVERSATION
+from marketingai.filters_utils import get_formatted_query
 from marketingai.models import CompanyMarketSegment, Person, Company, EmailSuggestions
-from marketingai.utils import fill_template, get_company_details, get_company_person_info, get_conversation_next_turn, fix_industries, get_email_messages, get_industry_problems, get_people_search_results
+from marketingai.utils import fill_template, get_company_details, get_company_person_info, get_conversation_next_turn, fix_industries, get_email_messages, get_industry_problems, get_people_search_results, get_search_filters, get_search_results
 from marketingai.serializers import CompanyMarketSegmentSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer
 
 # Create your views here.
@@ -71,6 +72,31 @@ def create_new_marketing_segment(request):
     })
 
 @api_view(['POST'])
+def get_final_filters(request, pk):
+    marget_segment = CompanyMarketSegment.objects.get(id=pk)
+    data= request.data
+    message = data.get("message")
+    marget_segment.message=message
+    raw_filters = get_search_filters(message)
+
+
+    if raw_filters:
+        if raw_filters.get("name"):
+            marget_segment.name= raw_filters.get("name")
+        filters, query = get_formatted_query(raw_filters) ### get search filter too
+        marget_segment.final_search_fields=filters
+        marget_segment.final_query = query
+        marget_segment.save()
+
+        return Response(status=200, data={
+            "search_filters": filters
+        })
+    else:
+        return Response(status=400)
+        
+
+
+@api_view(['POST'])
 def send_message(request, pk):
     marget_segment = CompanyMarketSegment.objects.get(id=pk)
     data= request.data
@@ -100,6 +126,9 @@ def send_message(request, pk):
     next_message  = get_conversation_next_turn(conversation)
     next_message_parsed = json.loads(next_message)
 
+    if next_message_parsed.get("name"):
+        marget_segment.name=next_message_parsed.get("name")
+
     end = next_message_parsed.get("end", False)
     conversation.append({
             "role": "assistant",
@@ -121,23 +150,22 @@ def send_message(request, pk):
     marget_segment.conversation=conversation
     marget_segment.save()
 
-    if end:
-            industries = fix_industries(next_message_parsed.get("industry", []))
-            final_search_fields = {
-                "industries": industries,
-                "employee_count": next_message_parsed.get("company_size", None),
-                "country": next_message_parsed.get("country", None),
-                "job_title": next_message_parsed.get("job_title", None),
-                }
-            marget_segment.raw_industries=next_message_parsed.get("industry", [])
+    if end or not next_message_parsed.get("question"):
+            # industries = fix_industries(next_message_parsed.get("industry", []))
+            # final_search_fields = {
+            #     "industries": industries,
+            #     "employee_count": next_message_parsed.get("company_size", None),
+            #     "country": next_message_parsed.get("country", None),
+            #     "job_title": next_message_parsed.get("job_title", None),
+            #     }
+            # marget_segment.raw_industries=next_message_parsed.get("industry", [])
             marget_segment.conversation_ended = True
-            marget_segment.final_search_fields = final_search_fields
+            # marget_segment.final_search_fields = final_search_fields
             marget_segment.save()
             return Response(status=200, data={
             "id": marget_segment.id,
             "end": True,
-            "message": "Thanks, here are your search filters.",
-            "search_filters": final_search_fields
+            "message": "Please press search to look for message."
         })
 
     if not end:
@@ -150,8 +178,9 @@ def send_message(request, pk):
 @api_view(['POST'])
 def search(request, pk):
     marget_segment = CompanyMarketSegment.objects.get(id=pk)
-    if marget_segment.final_search_fields and not marget_segment.search_results:
-        response = get_people_search_results(marget_segment.final_search_fields)
+    ### TODO fetch only when search result changed
+    if marget_segment.final_query:
+        response = get_search_results(marget_segment.final_query)
         marget_segment.raw_response = response
         marget_segment.search_results = response.get('data')
         marget_segment.save()
@@ -159,12 +188,6 @@ def search(request, pk):
             "id": marget_segment.id,
             "profiles": response.get('data'),
             "count": response.get('total')
-        })
-    elif marget_segment.search_results:
-        return Response(status=200, data={
-            "id": marget_segment.id,
-            "profiles": marget_segment.search_results,
-            "count": marget_segment.raw_response.get('total')
         })
     else:
         return Response(status=400, data={
@@ -177,7 +200,8 @@ def get_mails(request, pk):
     marget_segment = CompanyMarketSegment.objects.get(id=pk)
 
     if not marget_segment.problem:
-        problem = get_industry_problems(marget_segment.raw_industries, marget_segment.company.name, marget_segment.company.detailed_descrption)
+        problem_for = marget_segment.raw_industries if marget_segment.raw_industries else marget_segment.name
+        problem = get_industry_problems(problem_for, marget_segment.company.name, marget_segment.company.detailed_descrption)
         marget_segment.problem = problem
         marget_segment.save()
 
@@ -220,14 +244,22 @@ def segment_view(request, segment_id):
     # chats = Chat.objects.filter(segment_id=segment_id).order_by('-timestamp')  # Fetch chats ordered by timestamp (newest first)
     segment = CompanyMarketSegment.objects.get(id=segment_id)  # Assuming Segment model exists
 
+    filters= None
+
+    if segment.final_search_fields:
+        filters = {k: v for k, v in segment.final_search_fields.items() if v  and k != "name"}
+
+
     context = {
         'name': segment.name,
         'id': segment.id,
         'end': segment.conversation_ended,
-        'chats': segment.raw_messages,
-        'search_filters': segment.final_search_fields,
+        'message': segment.message,
+        'search_filters': filters,
+        "profiles" : segment.search_results,
+        "count": segment.raw_response.get('total', None) if segment.raw_response else None
     }
-    return render(request, 'segment_chat.html', context)
+    return render(request, 'search_view.html', context)
 
 
 def search_results_view(request, segment_id):

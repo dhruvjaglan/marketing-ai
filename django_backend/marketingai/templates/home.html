@@ -227,7 +227,7 @@
                             var listItem = document.createElement('li');
                             var link = document.createElement('a');
                             link.href = window.location.origin + '/target/segment/' + segment.id + '/';  // Set the link URL
-                            link.textContent = segment.name + ': ' + segment.raw_industries;
+                            link.textContent = segment.name ;
                             listItem.appendChild(link);  // Append the link to the list item
                             marketSegmentList.appendChild(listItem);  // Append list item to the list
                         });

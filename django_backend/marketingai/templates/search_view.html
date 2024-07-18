@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Segment Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #chat-section {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        #chat-section input, .message {
+            width: calc(100% - 120px); /* Reserve space for the button */
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .message {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #buttons {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+        #buttons button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #buttons button:hover {
+            background-color: #0056b3;
+        }
+        #profiles-section ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #profiles-section li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        #count-section {
+            margin-top: 20px;
+        }
+        #search-filters {
+            margin-top: 20px;
+        }
+        .ai-heading {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #search-button {
+            margin-left: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #search-button:hover {
+            background-color: #0056b3;
+        }
+        #side-panel {
+            position: fixed;
+            right: -300px;
+            top: 0;
+            width: 300px;
+            height: 100%;
+            background-color: #fff;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease-in-out;
+            overflow-y: auto;
+        }
+        #side-panel.open {
+            right: 0;
+        }
+        #side-panel .panel-header {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+        }
+        #side-panel .panel-body {
+            padding: 10px;
+        }
+        .email-list {
+            margin-top: 10px;
+        }
+        .email-item {
+            border: 1px solid #ddd;
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #007bff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ name }}</h1>
+        <div class="ai-heading">Set filters with AI</div>
+        <div id="chat-section">
+            <input type="text" id="message-input" placeholder="Type your message here..." value="{{ message }}">
+            <div id="buttons">
+                <button onclick="getSearchFilters('{{ id }}')">Update Filters</button>
+            </div>
+        </div>
+        <div id="search-filters">
+            {% if search_filters %}
+                <h3>Search Filters</h3>
+                {% for key, values in search_filters.items %}
+                    <div>
+                        <strong>{{ key }}:</strong> {{ values|join:", " }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <button id="search-button" onclick="search('{{ id }}')">Search</button>
+        <button onclick="toggleSidePanel(); fetchGeneralEmailContent('{{ id }}')">Get Emails</button>
+        <div id="profiles-section">
+            {% if profiles %}
+                <h2>All Profiles ({{ count }})</h2>
+                <ul>
+                    {% for profile in profiles %}
+                        <li>
+                            <strong>{{ profile.full_name }}</strong><br>
+                            {{ profile.job_title }} at {{ profile.job_company_name }}<br>
+                            <a href="https://www.{{ profile.linkedin_url }}" target="_blank">LinkedIn</a> | 
+                            <a href="mailto:{{ profile.recommended_personal_email }}">Email</a> | 
+                            <a href="tel:{{profile.mobile_phone}}">Phone</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>    
+    </div>
+
+    <div id="side-panel">
+        <div class="panel-header">Emails</div>
+        <div class="panel-body">
+            <ul id="emailList"></ul>
+        </div>
+    </div>
+
+
+
+
+    <script>
+        
+        function displaySearchResults(profiles, count) {
+            const profilesSection = document.getElementById('profiles-section');
+            profilesSection.innerHTML = `<h2>All Profiles (${count})</h2>`;
+            const ul = document.createElement('ul');
+            profiles.forEach(profile => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <strong>${profile.full_name}</strong><br>
+                    ${profile.job_title} at ${profile.job_company_name}<br>
+                    <a href="https://www.${profile.linkedin_url}" target="_blank">LinkedIn</a> | 
+                    <a href="mailto:${profile.recommended_personal_email}">Email</a> | 
+                    <a href="tel:${profile.mobile_phone || profile.phone_numbers[0]}">Phone</a>
+                `;
+                ul.appendChild(li);
+            });
+            profilesSection.appendChild(ul);
+        }
+
+        function search(segmentId) {
+            fetch(`/target/search/${segmentId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token for security
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data.profiles, data.count);
+            })
+            .catch(error => console.error('Error fetching search Result:', error));
+        }
+        function getSearchFilters(segmentId) {
+
+            const message = document.getElementById('message-input').value;
+
+            fetch(`/target/get_filters/${segmentId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token for security
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                displaySearchFilters(data.search_filters);
+            })
+            .catch(error => console.error('Error fetching search filters:', error));
+        }
+
+        function displaySearchFilters(filters) {
+            const searchFiltersDiv = document.getElementById('search-filters');
+            searchFiltersDiv.innerHTML = '<h3>Search Filters</h3>'; // Clear existing content
+            for (const [key, values] of Object.entries(filters)) {
+                if (values && key !== 'name') {
+                const filterDiv = document.createElement('div');
+                filterDiv.innerHTML = `<strong>${key}:</strong> ${values}`;
+                searchFiltersDiv.appendChild(filterDiv);
+                }
+            }
+        }
+
+        function fetchGeneralEmailContent(segmentId) {
+            const emailList = document.getElementById('emailList');
+
+            // Fetch email content from server using segmentId
+            fetch(`/target/get_mails/${segmentId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear previous email items
+                    emailList.innerHTML = '';
+
+                    // Add new email items
+                    data.forEach(email => {
+                        const emailItem = document.createElement('li');
+                        emailItem.className = 'email-item';
+                        emailItem.innerHTML = `
+                            <div class="email-subject">${email.subject}</div>
+                            <div class="email-body">${email.body.replace(/\n/g, '<br>')}</div>
+                        `;
+
+                        emailList.appendChild(emailItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching email content:', error);
+                });
+        }
+
+        function toggleSidePanel() {
+            const sidePanel = document.getElementById('side-panel');
+            sidePanel.classList.toggle('open');
+        }
+
+
+        
+    </script>
+</body>
+</html>

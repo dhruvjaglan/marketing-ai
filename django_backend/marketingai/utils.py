@@ -113,6 +113,22 @@ def get_company_details(domain):
                 # "job_title": next_message_parsed.get("job_title", None),
                 # }
 
+def get_search_results(query):
+    client = PDLPY(
+        api_key=settings.PEOPLE_DATA_LABS_API_KEY,
+    )
+    PARAMS = {
+        'dataset': 'email',
+        'sql': query,
+        'size': 3,
+        'pretty': True
+    }
+    
+    response = client.person.search(**PARAMS).json()
+
+    return response
+
+
 def get_people_search_results(search_fields):
     client = PDLPY(
         api_key=settings.PEOPLE_DATA_LABS_API_KEY,
@@ -225,7 +241,6 @@ def get_industry_problems(industries, company, company_detail):
     )
     return response.choices[0].message.content
 
-
 def get_email_messages(company, problem, company_detail):
     prompt = EMAIL_TEMPLATE
     prompt = fill_template_general({
@@ -246,7 +261,6 @@ def get_email_messages(company, problem, company_detail):
 
     return eval(strip_outside_single_pair_brackets(response.choices[0].message.content))
 
-
 def strip_outside_single_pair_brackets(text):
     start_index = text.find('[')
     end_index = text.find(']')
@@ -256,6 +270,49 @@ def strip_outside_single_pair_brackets(text):
         return stripped_text
     
     return None
+
+def get_search_filters(message):
+    response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                "role": "system",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": "You have to provide people search filters based on what person has said in JSON format.\n\n{\n\"name\": ## give a short readable name for the user search,\n\"location\": [] ### array of locations (try to provide full name of the location instead of short forms,\n\"include_companies\": [] ## companies to include,\n\"exclude_companies\": [] ## companies to exclude,\n\"similar_companies\" : [] ### similar companies,\n\"past_companies\" : [] ### past companies,\n\"job_title\": [] ## array of job titles of the person,\n\"job_title_level: ### array of title level of the person from the following list { cxo, director, entry, manager, owner, partner, senior, training, unpaid, vp},\n\"job_roles\": ## department they are working from this list {advisory, analyst, creative, education, engineering, finance, fulfillment, health, hospitality, human_resources, legal, manufacturing, marketing, operations, partnerships, product, professional_service, public_service,research, sales, sales_engineering, support, trade},\n\"company_size\":  ## Array of type i.e emerging (<50), small (50-200), mid (201-1000), large (1001-5000), enterprise (5000+),\n\"company_funding_stage\": ## array of type (pre-seed, seed, series-a, series-b, series-c, series-d+),\n\"industry\" : ### array of industries,\n\"college\": ### college they graduated from,\n\"field_of_study\": ## field of study during college\n}\n\nAdd everything as null which is not mentioned, Just return Json "
+                    }
+                ]
+                },
+            {
+            "role": "user",
+            "content": [
+                {
+                "type": "text",
+                "text": message
+                }
+            ]
+            }
+        ],
+        temperature=1,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+        )
+    
+
+    if response.choices and len(response.choices)> 0:
+        model_output = response.choices[0].message.content
+        start_index = model_output.find('{')
+        end_index = model_output.rfind('}') + 1
+        if start_index != -1 and end_index != -1 and start_index < end_index:
+            json_string = model_output[start_index:end_index]
+            parsed_json = json.loads(json_string)
+            return parsed_json
+    
+    return None
+
 
 def fix_industries(industries):
 
