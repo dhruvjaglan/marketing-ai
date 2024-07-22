@@ -1,11 +1,15 @@
 from rest_framework import serializers, status
-from .models import Company, CompanyMarketSegment, EmailSuggestions, Person
+from .models import Company, CompanyMarketSegment, EmailSuggestions, Person, CaseStudy
 
 
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class CaseStudySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CaseStudy
+        fields = "__all__"
 
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:

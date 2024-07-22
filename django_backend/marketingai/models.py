@@ -9,6 +9,10 @@ class Company(models.Model):
     legal_name = models.CharField(max_length=100, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     detailed_descrption = models.TextField(blank=True, null=True)
+    problem_statement = models.JSONField(blank=True, null=True)
+    customer_list =  models.JSONField(blank=True, null=True)
+    links = models.JSONField(blank=True, null=True)
+    details_fetched= models.BooleanField(default=False)
     sector = models.CharField(max_length=100)
     industry = models.CharField(max_length=100, blank=True, null=True)
     domain = models.CharField(max_length=100, unique=True)
@@ -19,6 +23,19 @@ class Company(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     raw_data = models.JSONField(blank=True, null=True)
 
+
+class CaseStudy(models.Model):
+    name = models.TextField(blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.PROTECT)
+    customer_comment = models.JSONField(blank=True, null=True)
+    problem_statement = models.TextField(blank=True, null=True)
+    impact = models.TextField(blank=True, null=True)
+    customers_name = models.CharField(blank=True, null=True,max_length=100)
+    customer_type = models.TextField(blank=True, null=True)
+    link = models.URLField(blank=True, null=True, unique=True)
+    raw_text  = models.TextField(blank=True, null=True)
+    
 
 class Person(models.Model):
     full_name = models.CharField(max_length=100)
@@ -57,5 +74,6 @@ class CompanyMarketSegment(models.Model):
 
 class EmailSuggestions(models.Model):
     segment = models.ForeignKey(CompanyMarketSegment, on_delete=models.PROTECT)
+    case_study_ids = models.TextField()
     subject = models.TextField()
     body = models.TextField()

@@ -132,6 +132,60 @@
             100% { transform: rotate(360deg); }
         }
 
+        #carousel-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #carousel-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        .carousel-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .carousel-item.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .popup-header h2 {
+            margin: 0;
+        }
+        .popup-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        .popup-buttons button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .popup-buttons button:hover {
+            background-color: #0056b3;
+        }
+
 
     </style>
 </head>
@@ -156,7 +210,7 @@
             {% endif %}
         </div>
         <button id="search-button" onclick="search('{{ id }}')">Search</button>
-        <button onclick="toggleSidePanel(); fetchGeneralEmailContent('{{ id }}')">Get Emails</button>
+        <button onclick="showCaseStudyPopup('{{ company_id }}')">Get Emails</button>
         <div id="profiles-section">
             {% if profiles %}
                 <h2>All Profiles ({{ count }})</h2>
@@ -177,15 +231,26 @@
 
     <div id="side-panel">
         <div class="panel-header">Emails</div>
+        <button onclick="toggleSidePanel()" style="float: right;">Close</button>
         <div class="panel-body">
             <ul id="emailList"></ul>
+        </div>
+    </div>
+    <div id="carousel-popup">
+        <div id="carousel-content">
+            <div class="popup-header">
+                <h2>Select a Case Study</h2>
+                <button onclick="confirmCaseStudySelection('{{ id }}')">Confirm</button>
+            </div>
+            <div id="case-study-carousel"></div>
         </div>
     </div>
 
 
 
-
     <script>
+        let selectedCaseStudies = new Set();
+
         
         function displaySearchResults(profiles, count) {
             const profilesSection = document.getElementById('profiles-section');
@@ -281,6 +346,91 @@
             const sidePanel = document.getElementById('side-panel');
             sidePanel.classList.toggle('open');
         }
+
+
+        function showCaseStudyPopup(segmentId) {
+        fetch(`/target/get_case_study/${segmentId}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token for security
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const carousel = document.getElementById('case-study-carousel');
+            carousel.innerHTML = '';
+            data?.forEach(cs => {
+                const div = document.createElement('div');
+                div.className = 'carousel-item';
+                div.innerHTML = `
+                    <strong>${cs.name}</strong><br>
+                    <p>${cs.summary}</p>
+                    <p><strong>Problem Statement:</strong> ${cs.problem_statement}</p>
+                    <p><strong>Impact:</strong> ${cs.impact}</p>
+                    <p><strong>Customer's Name:</strong> ${cs.customers_name}</p>
+                    <p><strong>Customer Type:</strong> ${cs.customer_type}</p>
+                    <p><strong>Link:</strong> <a href="${cs.link}" target="_blank">${cs.link}</a></p>
+                `;
+                div.addEventListener('click', () => {
+                    if (div.classList.contains('selected')) {
+                        div.classList.remove('selected');
+                        selectedCaseStudies.delete(cs.id);
+                    } else {
+                        div.classList.add('selected');
+                        selectedCaseStudies.add(cs.id);
+                    }
+                });
+                carousel.appendChild(div);
+            });
+            document.getElementById('carousel-popup').style.display = 'flex';
+        })
+        .catch(error => console.error('Error fetching case studies:', error));
+    }
+
+    function confirmCaseStudySelection(segmentId) {
+        document.getElementById('carousel-popup').style.display = 'none';
+        loadEmails(segmentId, [...selectedCaseStudies]);
+    }
+
+    function removeAllCaseStudies() {
+    selectedCaseStudies.clear();
+    document.querySelectorAll('#case-study-carousel .carousel-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    }
+
+
+    function loadEmails(segmentId, caseStudyIds) {
+        fetch(`/target/get_mails/${segmentId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}' // Include CSRF token for security
+            },
+            body: JSON.stringify({ case_study_ids: caseStudyIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const emailList = document.getElementById('emailList');
+            emailList.innerHTML = '';
+            data.forEach(email => {
+                        const emailItem = document.createElement('li');
+                        emailItem.className = 'email-item';
+                        emailItem.innerHTML = `
+                            <div class="email-subject">${email.subject}</div>
+                            <div class="email-body">${email.body.replace(/\n/g, '<br>')}</div>
+                        `;
+
+                        emailList.appendChild(emailItem);
+                    });
+            document.getElementById('side-panel').classList.add('open');
+            removeAllCaseStudies()
+        })
+        .catch(error => console.error('Error loading emails:', error));
+    }
+
+
 
 
         

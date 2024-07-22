@@ -5,9 +5,10 @@ from rest_framework import generics
 from rest_framework.response import Response
 from marketingai.constants import MARGET_SEGMENT_CONVERSATION
 from marketingai.filters_utils import get_formatted_query
-from marketingai.models import CompanyMarketSegment, Person, Company, EmailSuggestions
-from marketingai.utils import fill_template, get_company_details, get_company_person_info, get_conversation_next_turn, fix_industries, get_email_messages, get_industry_problems, get_people_search_results, get_search_filters, get_search_results
-from marketingai.serializers import CompanyMarketSegmentSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer
+from marketingai.tasks import add_company_details
+from marketingai.models import CompanyMarketSegment, Person, Company, EmailSuggestions, CaseStudy
+from marketingai.utils import fill_template, get_company_person_info, get_conversation_next_turn, get_email_messages, get_emails, get_industry_problems, get_people_search_results, get_search_filters, get_search_results
+from marketingai.serializers import CompanyMarketSegmentSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer, CaseStudySerializer
 
 # Create your views here.
 @api_view(['POST'])
@@ -18,24 +19,36 @@ def create_company_user(request):
         email= serializer.validated_data.get("email")
         person=Person.objects.filter(email=email)
         if person.exists():
-            return Response(PersonSerializer(person[0]).data)
+            person=person[0]
         else:
             person = get_company_person_info(email)
-            return Response(PersonSerializer(person).data)
+        
+        if (person.company and person.company.domain and not person.company.details_fetched):
+                url = "https://" + person.company.domain
+                add_company_details.delay(url, person.company.id)
+
+        return Response(PersonSerializer(person).data)
 
     return Response(status=400, data=serializer.errors)
+
+@api_view(['GET'])
+def get_case_study(request, pk):
+    company = Company.objects.get(pk=pk)
+    case_study = CaseStudy.objects.filter(company=company)
+    return Response(CaseStudySerializer(case_study, many=True).data)
+
 
 @api_view(['GET'])
 def get_detailed_description(request, pk):
     company = Company.objects.get(pk=pk)
 
-    if not company.detailed_descrption:
-        details = get_company_details(company.domain)
-        company.detailed_descrption = details
-        company.save()
+    if not company.details_fetched:
+        return Response(status=400)
 
     return Response(status=200, data={
-            "description": company.detailed_descrption
+            "description": company.description,
+            "problem_statement": company.problem_statement,
+            "customer_list": company.customer_list
         })
 
 ## TODO add functionality to update details
@@ -195,26 +208,24 @@ def search(request, pk):
         })
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def get_mails(request, pk):
     marget_segment = CompanyMarketSegment.objects.get(id=pk)
+    data = request.data
+    case_study_ids = data.get("case_study_ids", [])
+    sorted_array = sorted(case_study_ids)
+    comma_separated_string = ','.join(map(str, sorted_array))
 
-    if not marget_segment.problem:
-        problem_for = marget_segment.raw_industries if marget_segment.raw_industries else marget_segment.name
-        problem = get_industry_problems(problem_for, marget_segment.company.name, marget_segment.company.detailed_descrption)
-        marget_segment.problem = problem
-        marget_segment.save()
 
-    
-    emails = EmailSuggestions.objects.filter(segment=marget_segment)
+    emails = EmailSuggestions.objects.filter(segment=marget_segment, case_study_ids=comma_separated_string)
 
     if not emails.exists():
-        raw_emails = get_email_messages(marget_segment.company.name, marget_segment.problem, marget_segment.company.detailed_descrption)
+        raw_emails = get_emails(marget_segment.company.id, case_study_ids, marget_segment.id)
 
         for mail in raw_emails:
-            EmailSuggestions.objects.create(segment=marget_segment, subject=mail.get("subject"), body=mail.get("body"))
+            EmailSuggestions.objects.create(segment=marget_segment, subject=mail.get("subject"), body=mail.get("body"), case_study_ids=comma_separated_string)
         
-        emails = EmailSuggestions.objects.filter(segment=marget_segment)
+        emails = EmailSuggestions.objects.filter(segment=marget_segment, case_study_ids=comma_separated_string)
     
     return Response(status=200, data=EmailSuggestionsSerializer(emails, many=True).data)
 
@@ -255,6 +266,7 @@ def segment_view(request, segment_id):
         'id': segment.id,
         'end': segment.conversation_ended,
         'message': segment.message,
+        'company_id': segment.company.id,
         'search_filters': filters,
         "profiles" : segment.search_results,
         "count": segment.raw_response.get('total', None) if segment.raw_response else None

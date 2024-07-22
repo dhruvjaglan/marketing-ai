@@ -1,11 +1,12 @@
 from django.urls import path
 
-from marketingai.views import CompanyMarketSegmentListAPIView, create_company_user, create_new_marketing_segment, create_user_view, get_detailed_description, get_final_filters, search, search_results_view, segment_view, send_message, get_mails, create_home_view, update_description
+from marketingai.views import CompanyMarketSegmentListAPIView, create_company_user, create_new_marketing_segment, create_user_view, get_detailed_description, get_final_filters, search, search_results_view, segment_view, send_message, get_mails, create_home_view, update_description, get_case_study
 
 
 urlpatterns = [
     path('create_user/', create_company_user),
     path('company_detail/<int:pk>/', get_detailed_description),
+    path('get_case_study/<int:pk>/', get_case_study),
     path('new_segment/', create_new_marketing_segment),
     path('update_company_description/', update_description),
     path('send_message/<int:pk>/', send_message),

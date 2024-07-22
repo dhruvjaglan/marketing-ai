@@ -205,7 +205,7 @@
                     companyIndustry.innerText = 'Industry: ' + userData.company.industry;
 
                     
-                    fetchCompanyDescription(userData.company.id, userData.company.detailed_descrption);
+                    // fetchCompanyDescription(userData.company.id, userData.company.detailed_descrption);
                     
 
     
@@ -241,27 +241,42 @@
             // var userData = localStorage.getItem('userData');
             if (detailed_description) {
                 openPopup(detailed_description, companyId);
-            }else {
-            var url = '/target/company_detail/' + companyId + '/';  // Adjust the URL as needed
+            } else {
+                var url = '/target/company_detail/' + companyId + '/';  // Adjust the URL as needed
+                var interval = 5000;  // Poll every 5 seconds
+                var duration = 30000; // Poll for at least 30 seconds
+                var startTime = Date.now();
 
-            fetch(url)
-                .then(function(response) {
-                    if (!response.ok) {
-                        throw Error(response.statusText);
+                function fetchData() {
+                    fetch(url)
+                        .then(function(response) {
+                            if (!response.ok) {
+                                throw Error(response.statusText);
+                            }
+                            return response.json();
+                        })
+                        .then(function(data) {
+                            if (data.description) {
+                                openPopup(data.description, companyId);
+                                // Stop polling as we got the description
+                                clearInterval(pollingInterval);
+                            }
+                        })
+                        .catch(function(error) {
+                            console.error('Error:', error);
+                        });
+
+                    // Check if 30 seconds have passed
+                    if (Date.now() - startTime >= duration) {
+                        clearInterval(pollingInterval);
                     }
-                    return response.json();
-                })
-                .then(function(data) {
-                    // Assuming userData is globally accessible or defined elsewhere
+                }
 
-                    // Open a popup or modal to verify/update detailed description
-                    openPopup(data.description, companyId);
-                    
-                    // Update local storage if needed
-                })
-                .catch(function(error) {
-                    console.error('Error:', error);
-                });
+                // Start polling
+                var pollingInterval = setInterval(fetchData, interval);
+
+                // Call the fetch immediately for the first time
+                fetchData();
             }
         }
 
