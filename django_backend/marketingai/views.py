@@ -34,6 +34,8 @@ def create_company_user(request):
 @api_view(['GET'])
 def get_case_study(request, pk):
     company = Company.objects.get(pk=pk)
+    if not company.details_fetched:
+        return Response(status=400)
     case_study = CaseStudy.objects.filter(company=company)
     return Response(CaseStudySerializer(case_study, many=True).data)
 

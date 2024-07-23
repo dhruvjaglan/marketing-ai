@@ -17,8 +17,8 @@ client = OpenAI(
 @shared_task
 def add_company_details(company_link, company_id):
     company = Company.objects.get(id=company_id)
-    links = get_all_links(company_link, 4)
-    formatted_links = format_links(str(links))
+    links = get_all_links(company_link, company.domain, 3)
+    formatted_links = format_links(str(links[:60]))
     company.links = formatted_links
     if formatted_links and formatted_links.get("customer_case_study"):
         for link in formatted_links.get("customer_case_study"):
@@ -98,7 +98,7 @@ def get_company_details(domain):
 
     return response.choices[0].message.content
 
-def get_all_links(url, max_depth, current_depth=0, visited=None):
+def get_all_links(url, base_domain, max_depth, current_depth=0, visited=None):
     if visited is None:
         visited = set()
     
@@ -114,10 +114,10 @@ def get_all_links(url, max_depth, current_depth=0, visited=None):
             href = a_tag['href']
             full_url = urljoin(url, href)
             link_domain = urlparse(full_url).netloc
-            if  not link_domain.startswith('docs.') and 'docs' not in full_url :
+            if  not link_domain.startswith('docs.') and 'docs' not in full_url and 'learn' not in full_url and base_domain in full_url:
                 title = a_tag.get('title') if a_tag.get('title') else a_tag.text.strip()
                 links.append({'href': full_url, 'title': title})
-                links.extend(get_all_links(full_url, max_depth, current_depth + 1, visited))
+                links.extend(get_all_links(full_url, base_domain, max_depth, current_depth + 1, visited))
     except Exception as e:
         logger.error(f"Request failed: {e}")
     
@@ -147,7 +147,7 @@ def format_links(domains):
         }
     ],
     temperature=1,
-    max_tokens=1169,
+    max_tokens=2000,
     top_p=1,
     frequency_penalty=0,
     presence_penalty=0

@@ -385,7 +385,8 @@
             });
             document.getElementById('carousel-popup').style.display = 'flex';
         })
-        .catch(error => console.error('Error fetching case studies:', error));
+        .catch(error => 
+        alert("Fetching company details"));
     }
 
     function confirmCaseStudySelection(segmentId) {
