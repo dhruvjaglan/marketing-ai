@@ -18,7 +18,7 @@ client = OpenAI(
 def add_company_details(company_link, company_id):
     company = Company.objects.get(id=company_id)
     links = get_all_links(company_link, company.domain, 3)
-    formatted_links = format_links(str(links[:60]))
+    formatted_links = format_links(str(links))
     company.links = formatted_links
     if formatted_links and formatted_links.get("customer_case_study"):
         for link in formatted_links.get("customer_case_study"):
@@ -32,49 +32,54 @@ def add_company_details(company_link, company_id):
 
 
 def format_company_details(company_details, company):
-    response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {
-        "role": "system",
-        "content": [
-            {
-            "type": "text",
-            "text": "Format the following details about the company from details provided and return json structure\n\n{\n\"summary\": ### companies quick description,\n\"problem_statement\": #### array of problem statement/customer challenges,\n\"customer_list\": ### array of customer names\n}"
-            }
-        ]
-        },
-        {
-        "role": "user",
-        "content": [
-            {
-            "type": "text",
-            "text": company_details
-            }
-        ]
-        }
-    ],
-    temperature=1,
-    max_tokens=1169,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0
-    )
-    if len(response.choices)>0 and response.choices[0].message:
-        model_output = response.choices[0].message.content
-        start_index = model_output.find('{')
-        end_index = model_output.rfind('}') + 1
-        if start_index != -1 and end_index != -1 and start_index < end_index:
-            json_string = model_output[start_index:end_index]
-            parsed_json = json.loads(json_string)
-            if parsed_json.get("summary"):
-                company.detailed_descrption = parsed_json.get("summary")
-            if parsed_json.get("problem_statement"):
-                company.problem_statement = parsed_json.get("problem_statement")
-            if parsed_json.get("customer_list"):
-                company.customer_list = parsed_json.get("customer_list")
+    for i in range(2):
+        try:
+            response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                "role": "system",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": "Format the following details about the company from details provided and return json structure\n\n{\n\"summary\": ### companies quick description,\n\"problem_statement\": #### array of problem statement/customer challenges,\n\"customer_list\": ### array of customer names\n}"
+                    }
+                ]
+                },
+                {
+                "role": "user",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": company_details
+                    }
+                ]
+                }
+            ],
+            temperature=1,
+            max_tokens=1169,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+            )
+            if len(response.choices)>0 and response.choices[0].message:
+                model_output = response.choices[0].message.content
+                start_index = model_output.find('{')
+                end_index = model_output.rfind('}') + 1
+                if start_index != -1 and end_index != -1 and start_index < end_index:
+                    json_string = model_output[start_index:end_index]
+                    parsed_json = json.loads(json_string)
+                    if parsed_json.get("summary"):
+                        company.detailed_descrption = parsed_json.get("summary")
+                    if parsed_json.get("problem_statement"):
+                        company.problem_statement = parsed_json.get("problem_statement")
+                    if parsed_json.get("customer_list"):
+                        company.customer_list = parsed_json.get("customer_list")
 
-            company.save()
+                    company.save()
+                    break
+        except Exception as e:
+            logger.error(e)
 
 def get_company_details(domain):
     messages = [
@@ -124,43 +129,47 @@ def get_all_links(url, base_domain, max_depth, current_depth=0, visited=None):
     return links
 
 def format_links(domains):
-    response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {
-        "role": "system",
-        "content": [
-            {
-            "type": "text",
-            "text": "Categorize the links given below into the following categories:\n\nReturn Format Json\n{\n\"customer_case_study\": ### array of links,\n\"product_features\": ### array of links,\n\"news\": ### news update related to company,\n\"others\" ## array of remaining links\n}\n"
-            }
-        ]
-        },
-        {
-        "role": "user",
-        "content": [
-            {
-            "type": "text",
-            "text": domains
-            }
-        ]
-        }
-    ],
-    temperature=1,
-    max_tokens=2000,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0
-    )
+    for i in range(2):
+        try:
+            response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                "role": "system",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": "Categorize the links given below into the following categories:\n\nReturn Format Json\n{\n\"customer_case_study\": ### array of links,\n\"product_features\": ### array of links,\n\"news\": ### news update related to company,\n\"others\" ## array of remaining links\n}\n"
+                    }
+                ]
+                },
+                {
+                "role": "user",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": domains
+                    }
+                ]
+                }
+            ],
+            temperature=1,
+            max_tokens=2000,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+            )
 
-    if len(response.choices)>0 and response.choices[0].message:
-        model_output = response.choices[0].message.content
-        start_index = model_output.find('{')
-        end_index = model_output.rfind('}') + 1
-        if start_index != -1 and end_index != -1 and start_index < end_index:
-            json_string = model_output[start_index:end_index]
-            parsed_json = json.loads(json_string)
-            return parsed_json
+            if len(response.choices)>0 and response.choices[0].message:
+                model_output = response.choices[0].message.content
+                start_index = model_output.find('{')
+                end_index = model_output.rfind('}') + 1
+                if start_index != -1 and end_index != -1 and start_index < end_index:
+                    json_string = model_output[start_index:end_index]
+                    parsed_json = json.loads(json_string)
+                    return parsed_json
+        except Exception as e:
+            logger.error(e)
  
     return None
 
@@ -181,49 +190,50 @@ def get_case_study(url, company):
         return None
     
     if text:
-        response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-                {
-                "role": "system",
-                "content": [
-                    {
-                    "type": "text",
-                    "text": "Format the following details about the company from details provided and return json structure\n\nreturn Json \n\n{\n\"name\": ## name for a case study,\n\"summary\": ### summary of the case study,\n\"problem_statement\": ### major problem of the customer shown in the case study,\n\"customer_comment\": ### return a dict {\n             \"commentor\": ## name -title of person commented,\n              \"comment\": ### comment by the person},\n\"impact\": ### key metrics/impact that case study shows,\n\"customers_name\": ## customer in the case study (company name, keep it null if no name is mentioned),\n\"customer_type\": #### sentence defining the customer type, industry, size, any other parameters, don't be to specific, it should broader segment of companies\n}"
-                    }
-                ]
-                },
-                {
-                "role": "user",
-                "content": [
-                    {
-                    "type": "text",
-                    "text": text
-                    }
-                ]
-                }
-            ],
-        temperature=1,
-        max_tokens=1169,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-        )
-        if len(response.choices)>0 and response.choices[0].message:
-            model_output = response.choices[0].message.content
-            start_index = model_output.find('{')
-            end_index = model_output.rfind('}') + 1
-            if start_index != -1 and end_index != -1 and start_index < end_index:
-                json_string = model_output[start_index:end_index]
-                parsed_json = json.loads(json_string)
-                if parsed_json.get("impact"):
-                    try:
-                        case_study=CaseStudy.objects.create(name=parsed_json.get("name", "NA"), summary= parsed_json.get("summary", None),
-                                             company=company, customer_comment=parsed_json.get("customer_comment", None),
-                                             problem_statement=parsed_json.get("problem_statement", None), impact=str(parsed_json.get("impact", "")),
-                                             customers_name=parsed_json.get("customers_name", None), customer_type=parsed_json.get("customer_type", None),
-                                             link=url)
-
-                    except Exception as e:
-                        logger.error(e, parsed_json)
+        for i in range(2):
+            try:
+                response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                        {
+                        "role": "system",
+                        "content": [
+                            {
+                            "type": "text",
+                            "text": "Format the following details about the company from details provided and return json structure\n\nreturn Json \n\n{\n\"name\": ## name for a case study,\n\"summary\": ### summary of the case study,\n\"problem_statement\": ### major problem of the customer shown in the case study,\n\"customer_comment\": ### return a dict {\n             \"commentor\": ## name -title of person commented,\n              \"comment\": ### comment by the person},\n\"impact\": ### key metrics/impact that case study shows,\n\"customers_name\": ## customer in the case study (company name, keep it null if no name is mentioned),\n\"customer_type\": #### sentence defining the customer type, industry, size, any other parameters, don't be to specific, it should broader segment of companies\n}"
+                            }
+                        ]
+                        },
+                        {
+                        "role": "user",
+                        "content": [
+                            {
+                            "type": "text",
+                            "text": text
+                            }
+                        ]
+                        }
+                    ],
+                temperature=1,
+                max_tokens=1169,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0
+                )
+                if len(response.choices)>0 and response.choices[0].message:
+                    model_output = response.choices[0].message.content
+                    start_index = model_output.find('{')
+                    end_index = model_output.rfind('}') + 1
+                    if start_index != -1 and end_index != -1 and start_index < end_index:
+                        json_string = model_output[start_index:end_index]
+                        parsed_json = json.loads(json_string)
+                        if parsed_json.get("impact"):
+                            case_study=CaseStudy.objects.create(name=parsed_json.get("name", "NA"), summary= parsed_json.get("summary", None),
+                                                    company=company, customer_comment=parsed_json.get("customer_comment", None),
+                                                    problem_statement=parsed_json.get("problem_statement", None), impact=str(parsed_json.get("impact", "")),
+                                                    customers_name=parsed_json.get("customers_name", None), customer_type=parsed_json.get("customer_type", None),
+                                                    link=url)
+                            break
+            except Exception as e:
+                logger.error(e, parsed_json)
     
