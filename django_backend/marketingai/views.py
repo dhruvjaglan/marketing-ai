@@ -1,13 +1,14 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 import json
+import uuid
 from rest_framework import generics
 from rest_framework.response import Response
 from marketingai.constants import MARGET_SEGMENT_CONVERSATION
 from marketingai.filters_utils import get_formatted_query
 from marketingai.tasks import add_company_details
 from marketingai.models import CompanyMarketSegment, Person, Company, EmailSuggestions, CaseStudy
-from marketingai.utils import fill_template, get_company_person_info, get_conversation_next_turn, get_email_messages, get_emails, get_industry_problems, get_people_search_results, get_search_filters, get_search_results
+from marketingai.utils import fill_template, generate_sequence, get_company_person_info, get_conversation_next_turn, get_emails, get_people_search_results, get_search_filters, get_search_results
 from marketingai.serializers import CompanyMarketSegmentSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer, CaseStudySerializer
 
 # Create your views here.
@@ -209,6 +210,33 @@ def search(request, pk):
             "message": "Something went wrong"
         })
 
+@api_view(['POST'])
+def generate_mail_sequence(request, pk):
+    marget_segment = CompanyMarketSegment.objects.get(id=pk)
+    data = request.data
+    case_study_ids = data.get("case_study_ids", [])
+    sorted_array = sorted(case_study_ids)
+    comma_separated_string = ','.join(map(str, sorted_array))
+
+    raw_emails = generate_sequence(marget_segment.company.id, case_study_ids, marget_segment.id)
+    sequence = uuid.uuid4()
+
+    if raw_emails and isinstance(raw_emails, dict):
+        if raw_emails.get("cold_email"):
+            mail = raw_emails.get("cold_email")
+            EmailSuggestions.objects.create(segment=marget_segment, subject=mail.get("subject"), body=mail.get("body"), case_study_ids=comma_separated_string, sequence_id=sequence)
+        
+        if raw_emails.get("follow_up_1"):
+            EmailSuggestions.objects.create(segment=marget_segment, body=raw_emails.get("follow_up_1"), case_study_ids=comma_separated_string, sequence_id=sequence, order=1)
+        
+
+        if raw_emails.get("follow_up_2"):
+            EmailSuggestions.objects.create(segment=marget_segment, body=raw_emails.get("follow_up_2"), case_study_ids=comma_separated_string, sequence_id=sequence, order=2)
+
+    emails = EmailSuggestions.objects.filter(segment=marget_segment, case_study_ids=comma_separated_string, sequence_id=sequence)
+
+    return Response(status=200, data=EmailSuggestionsSerializer(emails, many=True).data)
+        
 
 @api_view(['POST'])
 def get_mails(request, pk):

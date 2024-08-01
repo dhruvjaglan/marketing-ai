@@ -43,6 +43,75 @@ INDUSTRIES_FIX_PROMPT = [
     }
   ]
 
+EMAIL_PROMPT_NEW = [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are tasked with writing a cold email to a potential business prospect.\nYour goal is to create a concise, engaging, and personalized email that captures the recipient's attention and encourages a response.\nFollow these instructions carefully to craft an effective cold email.\n\n##Email Structure:\n1. Subject Line\n2. Personalization/Problem/Observation\n3. Solution\n4. Social Proof\n5. Call to Action\n6. Social Proof Link (PS)\n\n##Email Properties:\n - Keep the email concise, ideally 80-100 words and no more than 150 words.\n - Use clear, simple language that a 4th grader could understand.\n - Ensure the content is directly relevant to the recipient's needs and interests.\n - Use a hint of flattery, but don't overdo it (optional)\n\n###Things to avoid:\n- Don't start with \"I hope this email finds you well!\"\n - Avoid salesy pitches; focus on starting a unique business relationship.\n - Don't list all of the recipient's recent activity.\n\n##Generate the following components for the cold email:\n\n1. Subject Line: Create a short, intriguing subject line. a few examples provide below\n   - Hey {prospect's name}, got some time to talk?\n   - Want to scale your business?\n   - Congrats on Fundraising!\n   - Are you looking for a solution to {business problem}?\n   - You must try {product/service name} to solve {prospect's pin points} - {company's name} is here to solve your problem!\n   - {prospect's name}, I have a question!\n   - You + Me = 6x more revenue\n\n2. Personalization/Problem/Observation: Write a brief opening that demonstrates your knowledge of the prospect's situation or presents a relevant question.\n   - I've noticed some negative reviews about your customer service. Citing lost tickets, lack of tools, and disorganization. Isʼt this frustrating?\n   - Is your customer support system actually losing you money?\n   - Nothing is more frustrating than losing a great candidate because you canʼt find their resume, interview history, or contact information.\n   - Will, looks like you're hiring reps. Would it be helpful to get a more granular look at how they're ramping up on email?\n   - I saw you're hiring SDRs. I imagine you're thinking about how they'll ramp.\n  - Will, couldn't help but notice that Lavender uses Intercom. great choice, but it's no secret that many companies underutilize its power, leading to     slow responses and frustrated customers.\n\n3. Solution: Explain how product can help solve the prospect's problem. Keep it brief and focused on the benefits to the prospect.\n   - Imagine a world where all of that information is organized in one simple, easy-to-find place. {Product/service name} is that place.\n    - in Founder-led part, you ask feedback on your solution: I ask because I'm looking for feedback. I run Lavender. It's a real-time sales email coach.        We help sellers at orgs like Sendoso, Twilio, Clari, etc\n    - Attentive’s software automatically measures and estimates using the latest high-resolution aerial imagery\n    - Linear helps Create tasks in seconds, discuss issues in context, and breeze through your work in tailored views\n\n4. Social Proof: Provide a short, specific example of how your product or service has helped a similar company. Use actual numbers or percentages if possible.\n     - In one year's time, we helped {company name] achieve a x % increase in sales after implementing your {product name}.\n     - Whatnot saw a 4-8x increase in data analysis speed and 10x decrease in maintenance costs by using Hex.\n    - We helped Capital City Striping improve their bid turnaround time by 100% and sent out 50% more bids.\n\n5. Call to Action: Write a clear, straightforward call to action asking for a specific next step, such as a quick demo or call.\n\n6. Social Proof Link (PS): Add a brief postscript with a link to a relevant case study or more information.\n - PS: I’ve attached a case study of how we helped capital city. Take a look!: case study_link\n\n###For follow-up emails: (no subject needed)\n- Follow-up 1: Create a shorter version of the original email, focusing on the key points and adding any new, relevant information.\n- Follow-up 2: Write an even more concise email, possibly taking a different angle or offering additional value.\n\nRemember to maintain a personal, helpful tone throughout the email, focusing on the prospect's needs and how you can provide value to them."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Generate cold emails on behave of {company_name}\n\n{summary}\n\n### Customer's Biggest Challenges: {challenges}\n \n\n Email Target Customer -  {target}\nuse {prospect_name}, {prospect_job_role}, {prospect_job_company} as first name, role, company\n"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Here are few case study please use these case study as social proofing in the email\n{case_studies}"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Output a dictionary  your cold email draft inside \"cold_email\" tag, with each component clearly labeled using appropriate tags  i.e. \"subject\",  \"body\"\nAfter the main email, include your follow-up email drafts inside \"follow_up_1\" and \"follow_up_2\n\nOutput format\n{\n\"cold_email\": {\n\"subject\":   \"subject of the mail\",\n\"body\": \"body of the mail\"},\n\"follow_up_1\" : \"body of follow up one\",\n\"follow_up_2\" : \"body of follow up 2\"\n}\n\n use variables  {prospect_name}, {prospect_job_role}, {prospect_job_company} as first name, role, company of receiver and {sender_name}, {sender_role}\n"
+        }
+      ]
+    }
+  ]
+
+EMAIL_PROMPT_NEW_WITHOUT_CASE_STUDY= [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are tasked with writing a cold email to a potential business prospect.\nYour goal is to create a concise, engaging, and personalized email that captures the recipient's attention and encourages a response.\nFollow these instructions carefully to craft an effective cold email.\n\n##Email Structure:\n1. Subject Line\n2. Personalization/Problem/Observation\n3. Solution\n4. Social Proof\n5. Call to Action\n6. Social Proof Link (PS)\n\n##Email Properties:\n - Keep the email concise, ideally 80-100 words and no more than 150 words.\n - Use clear, simple language that a 4th grader could understand.\n - Ensure the content is directly relevant to the recipient's needs and interests.\n - Use a hint of flattery, but don't overdo it (optional)\n\n###Things to avoid:\n- Don't start with \"I hope this email finds you well!\"\n - Avoid salesy pitches; focus on starting a unique business relationship.\n - Don't list all of the recipient's recent activity.\n\n##Generate the following components for the cold email:\n\n1. Subject Line: Create a short, intriguing subject line. a few examples provide below\n   - Hey {prospect's name}, got some time to talk?\n   - Want to scale your business?\n   - Congrats on Fundraising!\n   - Are you looking for a solution to {business problem}?\n   - You must try {product/service name} to solve {prospect's pin points} - {company's name} is here to solve your problem!\n   - {prospect's name}, I have a question!\n   - You + Me = 6x more revenue\n\n2. Personalization/Problem/Observation: Write a brief opening that demonstrates your knowledge of the prospect's situation or presents a relevant question.\n   - I've noticed some negative reviews about your customer service. Citing lost tickets, lack of tools, and disorganization. Isʼt this frustrating?\n   - Is your customer support system actually losing you money?\n   - Nothing is more frustrating than losing a great candidate because you canʼt find their resume, interview history, or contact information.\n   - Will, looks like you're hiring reps. Would it be helpful to get a more granular look at how they're ramping up on email?\n   - I saw you're hiring SDRs. I imagine you're thinking about how they'll ramp.\n  - Will, couldn't help but notice that Lavender uses Intercom. great choice, but it's no secret that many companies underutilize its power, leading to     slow responses and frustrated customers.\n\n3. Solution: Explain how product can help solve the prospect's problem. Keep it brief and focused on the benefits to the prospect.\n   - Imagine a world where all of that information is organized in one simple, easy-to-find place. {Product/service name} is that place.\n    - in Founder-led part, you ask feedback on your solution: I ask because I'm looking for feedback. I run Lavender. It's a real-time sales email coach.        We help sellers at orgs like Sendoso, Twilio, Clari, etc\n    - Attentive’s software automatically measures and estimates using the latest high-resolution aerial imagery\n    - Linear helps Create tasks in seconds, discuss issues in context, and breeze through your work in tailored views\n\n4. Social Proof: Provide a short, specific example of how your product or service has helped a similar company. Use actual numbers or percentages if possible.\n     - In one year's time, we helped {company name] achieve a x % increase in sales after implementing your {product name}.\n     - Whatnot saw a 4-8x increase in data analysis speed and 10x decrease in maintenance costs by using Hex.\n    - We helped Capital City Striping improve their bid turnaround time by 100% and sent out 50% more bids.\n\n5. Call to Action: Write a clear, straightforward call to action asking for a specific next step, such as a quick demo or call.\n\n6. Social Proof Link (PS): Add a brief postscript with a link to a relevant case study or more information.\n - PS: I’ve attached a case study of how we helped capital city. Take a look!: case study_link\n\n###For follow-up emails: (no subject needed)\n- Follow-up 1: Create a shorter version of the original email, focusing on the key points and adding any new, relevant information.\n- Follow-up 2: Write an even more concise email, possibly taking a different angle or offering additional value.\n\nRemember to maintain a personal, helpful tone throughout the email, focusing on the prospect's needs and how you can provide value to them."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Generate cold emails on behave of {company_name}\n\n{summary}\n\n### Customer's Biggest Challenges:  {challenges}\n \n\n Email Target Customer -  {target}\nuse {prospect_name}, {prospect_job_role}, {prospect_job_company} as first name, role, company\n"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Output a dictionary  your cold email draft inside \"cold_email\" tag, with each component clearly labeled using appropriate tags  i.e. \"subject\",  \"body\"\nAfter the main email, include your follow-up email drafts inside \"follow_up_1\" and \"follow_up_2\n\nOutput format\n{\n\"cold_email\": {\n\"subject\":   \"subject of the mail\",\n\"body\": \"body of the mail\"},\n\"follow_up_1\" : \"body of follow up one\",\n\"follow_up_2\" : \"body of follow up 2\"\n}\n\n use variables  {prospect_name}, {prospect_job_role}, {prospect_job_company} as first name, role, company of receiver and {sender_name}, {sender_role}\n"
+        }
+      ]
+    }
+  ]
+
 
 EMAIL_TEMPLATE = [
     {

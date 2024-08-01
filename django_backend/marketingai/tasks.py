@@ -30,7 +30,6 @@ def add_company_details(company_link, company_id):
     company.details_fetched = True
     company.save()
 
-
 def format_company_details(company_details, company):
     for i in range(2):
         try:

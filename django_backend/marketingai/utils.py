@@ -1,7 +1,7 @@
 import requests
 from django.conf import settings
 import json
-from marketingai.constants import EMAIL_TEMPLATE, EMAIL_TEMPLATE_2, INDUSTRIES_FIX_PROMPT, INDUSTRY_PROBLEMS
+from marketingai.constants import EMAIL_PROMPT_NEW, EMAIL_PROMPT_NEW_WITHOUT_CASE_STUDY, EMAIL_TEMPLATE, EMAIL_TEMPLATE_2, INDUSTRIES_FIX_PROMPT, INDUSTRY_PROBLEMS
 from .models import CompanyMarketSegment, Person, Company, CaseStudy
 from openai import OpenAI
 from peopledatalabs import PDLPY
@@ -241,6 +241,74 @@ def get_industry_problems(industries, company, company_detail):
     )
     return response.choices[0].message.content
 
+def generate_sequence(company_id, case_study_ids, segment_id):
+    company = Company.objects.get(id=company_id)
+    segment = CompanyMarketSegment.objects.get(id=segment_id)
+    case_study_json = None
+    if case_study_ids:
+        case_studies = CaseStudy.objects.filter(id__in=case_study_ids)
+        case_study_list = [
+            {
+                "name": case_study.name,
+                "summary": case_study.summary,
+                "company": case_study.company.name, 
+                "customer_comment": case_study.customer_comment,
+                "problem_statement": case_study.problem_statement,
+                "impact": case_study.impact,
+                "customers_name": case_study.customers_name,
+                "link": case_study.link
+            }
+            for case_study in case_studies
+        ]
+
+        case_study_json = json.dumps(case_study_list, indent=4)
+
+    problem = ""
+    if company.problem_statement and isinstance(company.problem_statement, list):
+        problem = " \n".join(company.problem_statement)
+    elif company.problem_statement:
+        problem = str(company.problem_statement)
+
+    if case_study_json:
+        prompt = EMAIL_PROMPT_NEW
+        prompt = fill_template_general({
+            "company_name":  company.name,
+            "summary" : company.description,
+            "challenges": problem,
+            "target": segment.name,
+            "case_studies": case_study_json
+        }, prompt)
+    else:
+        prompt = EMAIL_PROMPT_NEW_WITHOUT_CASE_STUDY
+        prompt = fill_template_general({
+            "company_name":  company.name,
+            "summary" : company.description,
+            "challenges": problem,
+            "target": segment.name,
+        }, prompt)
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=prompt,
+        temperature=1,
+        max_tokens=2000,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    if response.choices and len(response.choices)> 0:
+        model_output = response.choices[0].message.content
+        start_index = model_output.find('{')
+        end_index = model_output.rfind('}') + 1
+        if start_index != -1 and end_index != -1 and start_index < end_index:
+            json_string = model_output[start_index:end_index]
+            parsed_json = json.loads(json_string)
+            return parsed_json
+    
+    return None
+
+
+
 def get_emails(company_id, case_study_ids, segment_id):
     company = Company.objects.get(id=company_id)
     segment = CompanyMarketSegment.objects.get(id=segment_id)
@@ -251,7 +319,7 @@ def get_emails(company_id, case_study_ids, segment_id):
             {
                 "name": case_study.name,
                 "summary": case_study.summary,
-                "company": case_study.company.name,  # Assuming `company` has a `name` field
+                "company": case_study.company.name,
                 "customer_comment": case_study.customer_comment,
                 "problem_statement": case_study.problem_statement,
                 "impact": case_study.impact,

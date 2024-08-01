@@ -75,5 +75,7 @@ class CompanyMarketSegment(models.Model):
 class EmailSuggestions(models.Model):
     segment = models.ForeignKey(CompanyMarketSegment, on_delete=models.PROTECT)
     case_study_ids = models.TextField()
-    subject = models.TextField()
+    subject = models.TextField(null=True, blank=True)
     body = models.TextField()
+    sequence_id = models.UUIDField(null=True, blank=True)
+    order = models.IntegerField(default=0)

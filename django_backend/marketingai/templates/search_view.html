@@ -319,7 +319,7 @@
             const emailList = document.getElementById('emailList');
 
             // Fetch email content from server using segmentId
-            fetch(`/target/get_mails/${segmentId}/`)
+            fetch(`/target/generate_sequence/${segmentId}/`)
                 .then(response => response.json())
                 .then(data => {
                     // Clear previous email items
@@ -329,8 +329,9 @@
                     data.forEach(email => {
                         const emailItem = document.createElement('li');
                         emailItem.className = 'email-item';
+                        const emailSubject = email.subject ? email.subject : 'Follow up';
                         emailItem.innerHTML = `
-                            <div class="email-subject">${email.subject}</div>
+                            <div class="email-subject">${emailSubject}</div>
                             <div class="email-body">${email.body.replace(/\n/g, '<br>')}</div>
                         `;
 
@@ -403,7 +404,7 @@
 
 
     function loadEmails(segmentId, caseStudyIds) {
-        fetch(`/target/get_mails/${segmentId}/`, {
+        fetch(`/target/generate_sequence/${segmentId}/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -418,8 +419,9 @@
             data.forEach(email => {
                         const emailItem = document.createElement('li');
                         emailItem.className = 'email-item';
+                        const emailSubject = email.subject ? email.subject : 'Follow up';
                         emailItem.innerHTML = `
-                            <div class="email-subject">${email.subject}</div>
+                            <div class="email-subject">${emailSubject}</div>
                             <div class="email-body">${email.body.replace(/\n/g, '<br>')}</div>
                         `;
 
