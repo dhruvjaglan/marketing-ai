@@ -79,3 +79,23 @@ class EmailSuggestions(models.Model):
     body = models.TextField()
     sequence_id = models.UUIDField(null=True, blank=True)
     order = models.IntegerField(default=0)
+
+class EmailSequence(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.PROTECT)
+    things_not_to_change = models.TextField(null=True, blank=True)
+    email_json = models.JSONField()
+
+class EmailMailPersonalisation(models.Model):
+    person_linkedin_url =  models.TextField()
+    company_domain = models.TextField()
+    post_found = models.BooleanField(default=True)
+    sequence_completed = models.BooleanField(default=False)
+    company_name = models.TextField(null=True, blank=True)
+    full_name = models.TextField(null=True, blank=True)
+    title = models.TextField(null=True, blank=True)
+    raw_person_data= models.JSONField(null=True, blank=True)
+    company_post_data=models.JSONField(null=True, blank=True)
+    raw_company_data = models.JSONField(null=True, blank=True)
+    linkedin_data = models.JSONField(null=True, blank=True)
+    email_sequence = models.ForeignKey(EmailSequence, on_delete=models.PROTECT)
+    personalised_email_copy = models.JSONField(null=True, blank=True, default=[])

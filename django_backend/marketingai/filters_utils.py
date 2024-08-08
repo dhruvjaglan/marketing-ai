@@ -1,6 +1,7 @@
 from marketingai.constants import TITLE_LIST
 from fuzzywuzzy import process
 from peopledatalabs import PDLPY
+from django.conf import settings
 from marketingai.utils import fix_industries
 
 def get_min_max_avg_funding(target_stages):
@@ -57,7 +58,7 @@ def get_min_max_size(target_categories):
 
 def fix_location(location_string):
     CLIENT = PDLPY(
-    api_key="25850d46eb1bddedbee51b93e8ebb9f44799500c26f157e6e423fc1058e6c15a",
+    api_key=settings.PEOPLE_DATA_LABS_API_KEY,
     )
 
     # Create a parameters JSON object
@@ -81,7 +82,7 @@ def fix_titles(title_string):
 
 def fix_companies(company_string):
     CLIENT = PDLPY(
-    api_key="25850d46eb1bddedbee51b93e8ebb9f44799500c26f157e6e423fc1058e6c15a",
+    api_key=settings.PEOPLE_DATA_LABS_API_KEY,
     )
 
     # Create a parameters JSON object

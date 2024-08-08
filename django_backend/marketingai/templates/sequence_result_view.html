@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Results</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Basic styling for the page */
+        .container {
+            padding: 20px;
+        }
+        .result-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            position: relative;
+        }
+        .result-item h3 {
+            margin: 0 0 10px;
+        }
+        .carousel {
+            display: flex;
+            overflow: hidden; /* Hide overflow to show only one item at a time */
+            position: relative;
+        }
+        .carousel-inner {
+            display: flex;
+            transition: transform 0.3s ease-in-out; /* Smooth transition */
+        }
+        .carousel-item {
+            min-width: 100%; /* Ensure each item takes full width */
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .carousel-controls {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            transform: translateY(-50%);
+        }
+        .carousel-controls button {
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: #fff;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sequence Results</h1>
+        {% for result in results %}
+        <div class="result-item">
+            <h3>{{ result.full_name }} - {{ result.company_name }}</h3>
+            <p><strong>LinkedIn:</strong> <a href="{{ result.person_linkedin_url }}" target="_blank">{{ result.person_linkedin_url }}</a></p>
+            <p><strong>Company Domain:</strong> {{ result.company_domain }}</p>
+            <p><strong>Sequence Status:</strong> {{ result.sequence_completed|yesno:"Sequence Completed,Sequence Pending" }}</p>
+            
+            <!-- Carousel container -->
+            <div class="carousel">
+                <div class="carousel-inner">
+                    {% for email in result.personalised_email_copy %}
+                    <div class="carousel-item">
+                        <h4>Base Email</h4>
+                        <p><strong>Subject:</strong> {{ email.base_email.subject }}</p>
+                        <p><strong>Body:</strong><br>{{ email.base_email.body|linebreaksbr }}</p>
+                        
+                        {% for followup in email.followups %}
+                            {% if followup %}
+                            <h4>Follow-up {{ forloop.counter }}</h4>
+                            <p>{{ followup|linebreaksbr }}</p>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if email.reference_post %}
+                        <h4>Reference Post</h4>
+                        <p><a href="{{ email.reference_post }}" target="_blank">View Reference Post</a></p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="carousel-controls">
+                    <button class="prev">&lt;</button>
+                    <button class="next">&gt;</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.result-item').forEach(function (item) {
+                var carouselInner = item.querySelector('.carousel-inner');
+                var prevButton = item.querySelector('.prev');
+                var nextButton = item.querySelector('.next');
+                var totalItems = carouselInner.children.length;
+                var currentIndex = 0;
+
+                function updateCarousel() {
+                    var offset = -currentIndex * 100; // Move to the correct position
+                    carouselInner.style.transform = 'translateX(' + offset + '%)';
+                }
+
+                prevButton.addEventListener('click', function () {
+                    currentIndex = (currentIndex > 0) ? currentIndex - 1 : totalItems - 1;
+                    updateCarousel();
+                });
+
+                nextButton.addEventListener('click', function () {
+                    currentIndex = (currentIndex < totalItems - 1) ? currentIndex + 1 : 0;
+                    updateCarousel();
+                });
+
+                updateCarousel(); // Initialize the carousel position
+            });
+        });
+    </script>
+</body>
+</html>

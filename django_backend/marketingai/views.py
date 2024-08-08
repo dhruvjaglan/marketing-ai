@@ -1,15 +1,16 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 import json
+import re
 import uuid
 from rest_framework import generics
 from rest_framework.response import Response
 from marketingai.constants import MARGET_SEGMENT_CONVERSATION
 from marketingai.filters_utils import get_formatted_query
-from marketingai.tasks import add_company_details
-from marketingai.models import CompanyMarketSegment, Person, Company, EmailSuggestions, CaseStudy
+from marketingai.tasks import add_company_details, create_personalised_email
+from marketingai.models import CompanyMarketSegment, EmailMailPersonalisation, EmailSequence, Person, Company, EmailSuggestions, CaseStudy
 from marketingai.utils import fill_template, generate_sequence, get_company_person_info, get_conversation_next_turn, get_emails, get_people_search_results, get_search_filters, get_search_results
-from marketingai.serializers import CompanyMarketSegmentSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer, CaseStudySerializer
+from marketingai.serializers import CompanyMarketSegmentSerializer, EmailMailPersonalisationSerializer, EmailSequenceSerializer, EmailSuggestionsSerializer, EmailSerializer, PersonSerializer, CaseStudySerializer
 
 # Create your views here.
 @api_view(['POST'])
@@ -260,6 +261,49 @@ def get_mails(request, pk):
     return Response(status=200, data=EmailSuggestionsSerializer(emails, many=True).data)
 
 
+@api_view(['POST'])
+def create_mail_sequence(request, pk):
+    data = request.data
+    mail_json =  {}
+    if data.get("subject", None) and data.get("body", None):
+        mail_json['base_email'] = {
+            "subject" : data.get("subject"),
+            "body": data.get("body")
+        }
+        mail_json['followup_1'] = data.get("followup_1", None)
+        mail_json['followup_2'] = data.get("followup_2", None)
+        company = Company.objects.get(pk=pk)
+        email_sequence = EmailSequence.objects.create(company=company, email_json=mail_json)
+
+        return Response(status=200, data=EmailSequenceSerializer(email_sequence).data)
+    return Response(status=400)
+
+@api_view(['GET'])
+def get_email_sequences(request, pk):
+    company = Company.objects.get(pk=pk)
+    sequences = EmailSequence.objects.filter(company=company)
+    return Response(status=200, data=EmailSequenceSerializer(sequences, many=True).data)
+
+@api_view(['POST'])
+def create_personalisation(request, pk):
+    email_sequence = EmailSequence.objects.get(pk=pk)
+    data = request.data
+    if data.get("linkedin_url", None) and data.get("company_domain", None):
+        email_personalisation = EmailMailPersonalisation.objects.create(person_linkedin_url=data.get("linkedin_url", None),
+                                                                        company_domain=data.get("company_domain", None), email_sequence=email_sequence)
+        create_personalised_email.delay(email_personalisation.id)
+        return Response(status=200, data=EmailMailPersonalisationSerializer(email_personalisation).data)
+    return Response(status=400)
+
+
+@api_view(['GET'])
+def get_all_sequence_task(request, pk):
+    email_sequence = EmailSequence.objects.get(pk=pk)
+    email_personalisations = EmailMailPersonalisationSerializer.objects.filter(email_sequence=email_sequence)
+    return Response(EmailMailPersonalisationSerializer(email_personalisations, many=True).data)
+
+
+
 def create_user_view(request):
     # Render the create_user.html template
     return render(request, 'create_user.html')
@@ -269,7 +313,9 @@ def create_home_view(request):
     # Render the create_user.html template
     return render(request, 'home.html')
 
-
+def email_sequence_view(request):
+    # Render the create_user.html template
+    return render(request, 'sequences.html')
 
 class CompanyMarketSegmentListAPIView(generics.ListAPIView):
     serializer_class = CompanyMarketSegmentSerializer
@@ -279,6 +325,57 @@ class CompanyMarketSegmentListAPIView(generics.ListAPIView):
         return CompanyMarketSegment.objects.filter(company_id=company_id)
 
 
+def sequence_view(request, sequence_id):
+    sequence = EmailSequence.objects.get(id=sequence_id)
+    count = EmailMailPersonalisation.objects.filter(email_sequence=sequence).count()
+
+    context = sequence.email_json
+    context['count'] = count
+    context['id'] = sequence.id
+
+    return render(request, 'sequence_view.html', context)
+
+
+def replace_special_chars(obj):
+     if isinstance(obj, dict):
+         return {key: replace_special_chars(value) for key, value in obj.items()}
+     elif isinstance(obj, list):
+         return [replace_special_chars(element) for element in obj]
+     elif isinstance(obj, str):
+         # Replace special characters here
+         obj = obj.replace("\u2019", "'")  # Example replacement
+         obj = re.sub(r'[^\x00-\x7F]+', '', obj)  # Remove non-ASCII characters
+         return obj
+     else:
+         return obj
+
+
+def sequence_result_view(request, sequence_id):
+    sequence = EmailSequence.objects.get(id=sequence_id)
+    results = EmailMailPersonalisation.objects.filter(email_sequence=sequence)
+
+    data = []
+    for result in results:
+        data.append({
+            "id": result.id,
+            "company_domain": result.company_domain,
+            "person_linkedin_url":result.person_linkedin_url,
+            "post_found":result.post_found,
+            "sequence_completed":result.sequence_completed,
+            "company_name":result.company_name,
+            "full_name": result.full_name,
+            "title": result.title,
+            "personalised_email_copy": result.personalised_email_copy,
+        })
+
+    context = {
+        "results": replace_special_chars(data)
+    }
+
+    print(context)
+
+    return render(request, 'sequence_result_view.html', context)
+    
 
 def segment_view(request, segment_id):
     # Assuming Chat model has a ForeignKey to Segment model

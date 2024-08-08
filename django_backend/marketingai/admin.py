@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Company, Person, CompanyMarketSegment, CaseStudy, EmailSuggestions
+from .models import Company, Person, CompanyMarketSegment, CaseStudy, EmailSuggestions, EmailSequence, EmailMailPersonalisation
 
 # Register your models here.
 
@@ -8,4 +8,7 @@ admin.site.register(Person)
 admin.site.register(CompanyMarketSegment)
 admin.site.register(CaseStudy)
 admin.site.register(EmailSuggestions)
+
+admin.site.register(EmailMailPersonalisation)
+admin.site.register(EmailSequence)
 

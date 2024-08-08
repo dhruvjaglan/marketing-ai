@@ -5,7 +5,9 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import json
-from marketingai.models import CaseStudy, Company
+from marketingai.utils import get_personalised_mail, get_post_relatability, get_relatable_content
+from marketingai.models import CaseStudy, Company, EmailMailPersonalisation
+from peopledatalabs import PDLPY
 import logging
 
 logger = logging.getLogger(__name__)
@@ -236,3 +238,149 @@ def get_case_study(url, company):
             except Exception as e:
                 logger.error(e, parsed_json)
     
+def get_crunchbase_url(data):
+    # Access the list of profiles from the dictionary
+    profiles = data.get('profiles', [])
+    
+    for profile in profiles:
+        if 'crunchbase.com/organization/' in profile:
+            return profile
+    return None
+
+def get_all_post_detail(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    content_element = soup.select_one('p.attributed-text-segment-list__content')
+    content = content_element.get_text(strip=True) if content_element else None
+
+    # Extract the page URL safely
+    by_element = soup.select_one('h1.section-title')
+    by = by_element.get_text().strip().replace("’s Post", "") if by_element else None
+
+    # Extract time safely
+    time_element = soup.find('time')
+    time = time_element.get_text().strip() if time_element else None
+
+    # Extract reactions safely
+    reactions_element = soup.find('span', {'data-test-id': 'social-actions__reaction-count'})
+    reactions = reactions_element.get_text().strip() if reactions_element else None
+
+    return content, by, time, reactions
+
+#### mostly for posts 
+def get_linkedin_current_data(linkedin_url):
+    url = "https://piloterr.com/api/v2/linkedin/company/info?query=" + linkedin_url
+
+    headers = {"x-api-key": "41d4da1b-344c-4be8-830a-a21374d494d4"}
+
+    response = requests.request("GET", url, headers=headers)
+
+    data = response.json()
+
+    if data.get('posts'):
+        posts = data.get('posts')
+        for post in posts:
+            content, by, time, reactions = get_all_post_detail(post['post_url'])
+            post['content'] = content
+            post['by'] = by
+            post['when_posted'] = time
+            post['reactions'] = reactions
+        
+        data['posts'] = posts
+
+    return data
+
+
+@shared_task
+def create_personalised_email(id):
+    email_personalisation = EmailMailPersonalisation.objects.get(id=id)
+    client_search = PDLPY(
+    api_key=settings.PEOPLE_DATA_LABS_API_KEY,
+    )
+    PARAMS = {
+    "profile": [email_personalisation.person_linkedin_url]
+    }
+
+    person_data = client_search.person.enrichment(**PARAMS).json()
+    email_personalisation.raw_person_data= person_data
+
+    company_linkedin_url = None
+
+    if person_data['data'].get('job_company_linkedin_url'):
+        company_linkedin_url = "https://www." + person_data['data'].get('job_company_linkedin_url')
+
+    PARAMS = {
+    "website": email_personalisation.company_domain
+    }
+    crunch_base_url = None
+
+    company_data = client_search.company.enrichment(**PARAMS).json()
+    email_personalisation.raw_company_data= company_data
+    company_post_data = None
+    if company_data.get('status') == 200:
+        if company_data.get('linkedin_id'):
+            company_linkedin_url = 'https://www.linkedin.com/company/' + company_data.get('linkedin_id')
+        
+        crunch_base_url = get_crunchbase_url(company_data)
+    
+    if crunch_base_url:
+        pass
+        ## get more
+
+    if company_linkedin_url:
+        company_post_data = get_linkedin_current_data(company_linkedin_url)
+    
+    email_personalisation.company_post_data = company_post_data
+
+    company_name = email_personalisation.email_sequence.company.name
+    company_summary = email_personalisation.email_sequence.company.description
+    company_key_problem = json.dumps(email_personalisation.email_sequence.company.problem_statement, indent=4)
+    prospect_name = person_data['data'].get('first_name', 'NA')
+    prospect_role = person_data['data'].get('job_title', 'NA')
+    prospect_company = company_post_data.get('company_name', 'NA')
+    prospect_summary = company_post_data.get('description', 'NA')
+    base_emails = json.dumps(email_personalisation.email_sequence.email_json)
+
+    email_personalisation.full_name = person_data['data'].get('full_name', 'NA')
+    email_personalisation.company_name = prospect_company
+    email_personalisation.title = prospect_role
+    email_personalisation.save()
+
+
+
+    if company_post_data and company_post_data.get("posts"):
+        posts = get_post_relatability(company_post_data.get("posts"), company_name, company_summary, company_key_problem,
+                                       prospect_company, prospect_summary)
+        
+        if isinstance(posts, dict) and posts.get('posts', []):
+            posts = posts.get("posts")
+        
+        high_rated_posts = [post for post in posts if post['rating'] == 'high']
+        personalised_email_copy = email_personalisation.personalised_email_copy
+
+        if high_rated_posts:
+            for post in high_rated_posts:
+                mail = get_personalised_mail(company_name,company_summary,company_key_problem, prospect_name, prospect_role, prospect_company, 
+                                             base_emails, post['content'])
+                mail["reference_post"] = post.get("post_url", None)
+                personalised_email_copy.append(mail)
+        
+        else:
+            medium_rated_posts = [post for post in posts if post['rating'] == 'medium']
+            for post in medium_rated_posts:
+                mail = get_personalised_mail(company_name,company_summary,company_key_problem, prospect_name, prospect_role, prospect_company, 
+                                             base_emails, post['content'])
+                mail["reference_post"] = post.get("post_url", None) 
+                personalised_email_copy.append(mail)
+        
+        email_personalisation.personalised_email_copy = personalised_email_copy
+
+        
+    else:
+        email_personalisation.post_found=False
+    
+
+    email_personalisation.sequence_completed = True
+    email_personalisation.save()
+        
+

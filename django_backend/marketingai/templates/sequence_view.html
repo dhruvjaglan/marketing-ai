@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Sequence</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        #personalizationForm {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Email Sequence</h1>
+
+        <!-- Button to show the form -->
+        <button id="showFormButton" class="btn btn-primary mb-3">Request Personalization</button>
+
+        <!-- Form for requesting personalization -->
+        <div id="personalizationForm" class="mb-4">
+            <form id="personalizationFormElement">
+                {% csrf_token %}
+                <div class="form-row">
+                    <div class="col">
+                        <input type="url" class="form-control" id="linkedin_url" name="linkedin_url" placeholder="LinkedIn URL" required>
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control" id="company_domain" name="company_domain" placeholder="Company Domain" required>
+                    </div>
+                    <div class="col">
+                        <button type="button" id="submitButton" class="btn btn-primary" onclick="submitForm('{{ id }}')">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Success message -->
+        <div id="successMessage" class="alert alert-success" role="alert" style="display: none;">
+            Request submitted successfully!
+        </div>
+
+        <!-- Button to view results -->
+        <div id="resultsButton" class="mb-4">
+           <a id="resultsLink" class="btn btn-secondary" href="{{ window.location.origin }}/target/sequence/result/{{ id }}">View Results</a>
+        </div>
+        
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Base Email</strong>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ base_email.subject }}</h5>
+                <p class="card-text">{{ base_email.body }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Follow-up 1</strong>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ followup_1 }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Follow-up 2</strong>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ followup_2 }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Personalization Requests</strong>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Number of Personalization Requests: {{ count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('showFormButton').addEventListener('click', function() {
+            var form = document.getElementById('personalizationForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        });
+
+        function submitForm(id) {
+            var form = document.getElementById('personalizationFormElement');
+            var linkedinUrl = document.getElementById('linkedin_url').value;
+            var companyDomain = document.getElementById('company_domain').value;
+            var csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            var data = {
+                linkedin_url: linkedinUrl,
+                company_domain: companyDomain
+            };
+
+            fetch(`/target/create_personalisation/${id}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('successMessage').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -463,3 +463,167 @@ def fix_industries(industries):
         presence_penalty=0
     )
     return eval(response.choices[0].message.content)
+
+
+def age_to_days(age_str):
+    if age_str is None:
+        return None
+    # Remove any 'Edited' or extra text from the date string
+    age_str = age_str.lower().replace("edited", "")
+    if 'd' in age_str:
+        return int(age_str.replace('d', ''))
+    elif 'w' in age_str:
+        return int(age_str.replace('w', '')) * 7
+    elif 'mo' in age_str:
+        return int(age_str.replace('mo', '')) * 30
+    elif 'm' in age_str:
+        return int(age_str.replace('m', '')) * 30
+    return None
+
+def filter_posts(posts):
+    filtered_posts = []
+    for post in posts:
+        if not post['content'] or len(post['content']) < 200:  # Remove empty posts
+            continue
+        days_ago = age_to_days(post['when_posted'])
+        if days_ago is not None and days_ago <= 30:
+            filtered_posts.append(post)
+    return filtered_posts
+
+
+def get_relatable_content(posts, company_name, summary, problems, prospect_company, prospect_summary):
+  base_prompt =[
+      {
+        "role": "system",
+        "content": [
+                {
+                  "type": "text",
+                  "text": "You are marketing researcher, given the company who is reaching out rate the following linkedin post to most related for personalization of reach out.\n\n my company: {company_name},  {company_summary}  \nProblems  my company focus on \n-- {problems}\n\nCompany I am reaching out too {prospect_company)\n- {prospect_company}\n\nRating should be based on\n- New product update: high\n- news or milestone in Product journey: high\n- Interesting view on a topic that problems above can directly solve: high\n- Interesting view on a topic that problems indirectly relate to the problem: medium\n- Growth or new customer story: high\n- Interesting view on any general topic: medium\n- general post: low \n\nReturn Json by field terms, you have to provide a reason for the relatability"
+                }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "{posts}"
+          }
+        ]
+      },
+    {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Return a Json array of posts, with all fields post_url, id, content, reason, rating"
+          }
+        ]
+      }
+    ]
+  prompt = fill_template_general({
+        "problems":  problems,
+        "company_name" : company_name,
+        "company_summary": summary,
+        "posts": posts,
+        "prospect_company": prospect_company,
+        "prospect_company_summary": prospect_summary
+    }, base_prompt)
+  response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages= prompt,
+    temperature=0,
+    max_tokens=4000,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    response_format={
+      "type": "json_object"
+    }
+  )
+  return json.loads(response.choices[0].message.content)
+
+
+def get_post_relatability(posts, company_name, summary, problems, prospect_company, prospect_summary):
+    filtered_posts = filter_posts(posts)
+
+    abc = []
+    for p in filtered_posts:
+        abc.append({
+            "id": p["post_id"],
+            "post_url": p["post_url"],
+            "content": p["content"],
+            "rating": None,
+            "reason": None
+        })
+    
+    post_string = json.dumps(abc, indent=4)
+
+    return get_relatable_content(post_string, company_name, summary, problems, prospect_company, prospect_summary)
+
+
+def get_personalised_mail(company_name,company_summary,company_key_problems, prospect_name, prospect_role, prospect_company, base_email, content):
+    prompt=[
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are marketing agent for a company:  {company_name}\n\n{company_summary}\n\nkey problems:\n{company_key_problems}\n\nYou have to personalized the base mail given the person you are reaching out to and content to be used\n\nEmail Properties: -\n - Keep the email concise, ideally 80-100 words and no more than 150 words.\n - Use clear, simple language that a 4th grader could understand. \n- Ensure the content is directly relevant to the recipient's needs and interests. \n- Use a hint of flattery\n\nThings to avoid: \n- Don't start with \"I hope this email finds you well!\" \n- Avoid salesy pitches; focus on starting a unique business relationship. \n- Don't list all of the recipient's recent activity.\n\nSome personalization used:\n- Read in Forbes that (Company) committed to reducing their carbon footprint. How do you find logistics partners with aligned missions?\n- I noticed your insightful post yesterday about how you proactively invite your reference customers to reach out to your prospects.\n- Noticed you're a certified yoga teacher - it's clear personal growth matters to you. Just like in yoga, mindfulness is vital in sales too. Regie.ai helps your sales team find their zen by personalizing emails effortlessly. Picture a team firing on all cylinders, with every rep achieving their targets. Ready to nail warrior 3 pose, together?\n- I'm a big fan of your Linkedin content and your merch is chef's kiss right on time.\n- I listened to you on the Sales Acceleration Podcast on my way to work this morning and loved your insight on the future of sales development.\n- Read your recent LinkedIn article The 4:1 Give-Get Sales Formula, and as a pretty green AE, it was great advice to remember as I start, and progress my sales career.\n\nimprove the subject line too\nA short, intriguing personalized subject subject line .\n\nPlease keep these things in the personalized mail too\n"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "\nprospect name:  {prospect_name}\nrole: {prospect_role}\nprospect company: {prospect_company}\nprospect company details: {prospect_company_summary}\n\nContent to be used\n\nLinkedin post\ncontent:\n{content}"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "{base_email}"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "return json by updated base mails based on the personalization (keep the format same base email)"
+        }
+      ]
+    }
+    ]
+    prompt = fill_template_general({
+        "prospect_company":  prospect_company,
+        "company_name" : company_name,
+        "company_summary": company_summary,
+        "company_key_problems": company_key_problems,
+        "prospect_name": prospect_name,
+        "prospect_role": prospect_role,
+        "base_email": base_email,
+        "content": content
+    }, prompt)
+
+    response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages= prompt,
+    temperature=1,
+    max_tokens=1789,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    response_format={
+      "type": "json_object"
+    }
+    )
+    return json.loads(response.choices[0].message.content)
+
+

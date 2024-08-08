@@ -1,10 +1,29 @@
 from rest_framework import serializers, status
-from .models import Company, CompanyMarketSegment, EmailSuggestions, Person, CaseStudy
+from .models import Company, CompanyMarketSegment, EmailSuggestions, Person, CaseStudy, EmailSequence, EmailMailPersonalisation
 
 
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+class EmailSequenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailSequence
+        fields = "__all__"
+
+class EmailMailPersonalisationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailMailPersonalisation
+        fields = [
+            'id',
+            'person_linkedin_url',
+            'company_domain',
+            'post_found',
+            'sequence_completed',
+            'company_name',
+            'full_name',
+            'title',
+            'personalised_email_copy'
+        ]
 
 class CaseStudySerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Email Sequences</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+            }
+            .top-bar {
+                width: 100%;
+                background-color: #4CAF50;
+                color: white;
+                padding: 15px 20px;
+                text-align: left;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1;
+            }
+            .sidebar {
+                width: 25%;
+                background-color: #f4f4f4;
+                padding: 20px;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+                height: 100vh;
+                position: fixed;
+                top: 60px; /* Offset for the top bar */
+            }
+            .sidebar img {
+                width: 100px;
+                height: 100px;
+                border-radius: 50%;
+                margin-bottom: 15px;
+            }
+            .sidebar h2 {
+                margin-top: 0;
+            }
+            .main-content {
+                margin-left: 30%;
+                padding: 20px;
+                margin-top: 60px; /* Offset for the top bar */
+                box-sizing: border-box;
+            }
+            .email-sequences-list {
+                list-style: none;
+                padding: 0;
+            }
+            .email-sequences-list li {
+                background: #f9f9f9;
+                margin: 5px 0;
+                padding: 10px;
+                border: 1px solid #ddd;
+            }
+            .create-new-sequences {
+                margin-top: 20px;
+                padding: 10px;
+                border: 1px solid #4CAF50;
+                background-color: #4CAF50;
+                color: white;
+                cursor: pointer;
+                text-align: center;
+            }
+            .popup {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                padding: 20px;
+                z-index: 10;
+            }
+            .popup input, .popup textarea {
+                width: 100%;
+                margin: 5px 0;
+                padding: 8px;
+            }
+            .popup button {
+                margin-top: 10px;
+                padding: 10px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+            }
+            .popup-close {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top-bar" id="top-bar">
+            Greeting, User!
+        </div>
+        <div class="sidebar" id="sidebar">
+            <img src="profile.jpg" alt="Profile Image" id="profile-image">
+            <p id="name"> Full name...</p>
+            <p id="title"> title...</p>
+            <h2 id="company-name">Company Name</h2>
+            <p id="company-description">Company Description...</p>
+            <p id="company-industry">Industry: ABC</p>
+        </div>
+        {% csrf_token %}
+        <div class="main-content">
+            <h1>Email Sequences</h1>
+            <ul class="email-sequences-list" id="email-sequences-list">
+                <!-- email sequence will be loaded here -->
+            </ul>
+            <div class="create-new-sequences" onclick="openPopup()">Create New Sequence</div>
+        </div>
+
+        <div class="popup" id="popup">
+            <span class="popup-close" onclick="closePopup()">×</span>
+            <h2>Create New Sequence</h2>
+            <input type="text" id="subject" placeholder="Subject">
+            <textarea id="body" placeholder="Body"></textarea>
+            <textarea id="followup1" placeholder="Follow-up 1"></textarea>
+            <textarea id="followup2" placeholder="Follow-up 2"></textarea>
+            <button onclick="submitNewSequence()">Submit</button>
+        </div>
+
+        <script>
+            function openPopup() {
+                document.getElementById('popup').style.display = 'block';
+            }
+
+            function closePopup() {
+                document.getElementById('popup').style.display = 'none';
+            }
+
+            function submitNewSequence() {
+                var userData = localStorage.getItem('userData');
+                userData = JSON.parse(userData);
+
+                var subject = document.getElementById('subject').value;
+                var body = document.getElementById('body').value;
+                var followup1 = document.getElementById('followup1').value;
+                var followup2 = document.getElementById('followup2').value;
+
+                fetch('/target/create_mail_sequence/' + userData.company.id + '/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        subject: subject,
+                        body: body,
+                        followup_1: followup1,
+                        followup_2: followup2
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    closePopup();
+                    fetchEmailSequences(userData.company.id);
+                })
+                .catch(error => console.error('Error creating email sequence:', error));
+            }
+
+            window.addEventListener('load', function() {
+                var userData = localStorage.getItem('userData');
+                if (userData) {
+                    userData = JSON.parse(userData);
+
+                    var topBar = document.getElementById('top-bar');
+                    topBar.innerText = 'Greeting, ' + userData.first_name + '!';
+
+                    var profileImage = document.getElementById('profile-image');
+                    var name = document.getElementById('name');
+                    var title = document.getElementById('title');
+                    var companyName = document.getElementById('company-name');
+                    var companyDescription = document.getElementById('company-description');
+                    var companyIndustry = document.getElementById('company-industry');
+
+                    profileImage.src = userData.avatar;
+                    name.innerText = userData.full_name;
+                    title.innerText = userData.title;
+                    companyName.innerText = userData.company.name;
+                    companyDescription.innerText = userData.company.description;
+                    companyIndustry.innerText = 'Industry: ' + userData.company.industry;
+
+                    fetchEmailSequences(userData.company.id);
+
+                } else {
+                    window.location.href = window.location.origin + "/get_started/";
+                }
+            });
+
+            function fetchEmailSequences(companyId) {
+                fetch('/target/get_email_sequences/' + companyId + '/')
+                    .then(response => response.json())
+                    .then(data => {
+                        var emailSequenceList = document.getElementById('email-sequences-list');
+                        emailSequenceList.innerHTML = '';
+                        data.forEach(sequence => {
+                            var listItem = document.createElement('li');
+                            var link = document.createElement('a');
+                            link.href = window.location.origin + '/target/sequence/' + sequence.id + '/';
+                            link.textContent = sequence.email_json.base_email.subject;
+
+                            var body = document.createElement('p');
+                            body.textContent = sequence.email_json.base_email.body;
+
+                            listItem.appendChild(link);
+                            listItem.appendChild(body);
+                            emailSequenceList.appendChild(listItem);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching market segments:', error));
+            }
+        </script>
+    </body>
+</html>
