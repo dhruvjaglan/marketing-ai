@@ -470,15 +470,18 @@ def age_to_days(age_str):
         return None
     # Remove any 'Edited' or extra text from the date string
     age_str = age_str.lower().replace("edited", "")
-    if 'd' in age_str:
-        return int(age_str.replace('d', ''))
-    elif 'w' in age_str:
-        return int(age_str.replace('w', '')) * 7
-    elif 'mo' in age_str:
-        return int(age_str.replace('mo', '')) * 30
-    elif 'm' in age_str:
-        return int(age_str.replace('m', '')) * 30
-    return None
+    try:
+        if 'd' in age_str:
+            return int(age_str.replace('d', ''))
+        elif 'w' in age_str:
+            return int(age_str.replace('w', '')) * 7
+        elif 'mo' in age_str:
+            return int(age_str.replace('mo', '')) * 30
+        elif 'm' in age_str:
+            return int(age_str.replace('m', '')) * 30
+        return None
+    except:
+        return 0
 
 def filter_posts(posts):
     filtered_posts = []
